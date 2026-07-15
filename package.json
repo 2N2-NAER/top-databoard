@@ -1,16 +1,6 @@
 {
   "name": "top-beauty-data-dashboard",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "vercel dev",
-    "check": "node -e \"const fs=require('fs'); const html=fs.readFileSync('index.html','utf8'); const scripts=[...html.matchAll(/<script[^>]*>([\\\\s\\\\S]*?)<\\\\/script>/g)].map(m=>m[1]); for (const code of scripts) new Function(code); console.log('inline scripts ok:', scripts.length);\""
-  },
-  "dependencies": {
-    "@vercel/kv": "^3.0.0"
-  },
-  "devDependencies": {
-    "vercel": "^46.0.0"
-  }
+  "description": "Shared model evaluation dashboard with Supabase cloud persistence"
 }
