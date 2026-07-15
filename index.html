@@ -307,70 +307,6 @@
     }
 
     .main-col { display: grid; gap: 18px; }
-
-    .mapping-toolbar {
-      display: grid;
-      grid-template-columns: minmax(180px, 260px) auto;
-      gap: 10px;
-      align-items: end;
-      justify-content: start;
-      margin-bottom: 14px;
-    }
-
-    .mapping-list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .mapping-item {
-      display: grid;
-      grid-template-columns: 220px minmax(0, 1fr) auto;
-      gap: 10px;
-      align-items: start;
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 12px;
-      background: #fff;
-      transition: border-color 150ms ease-out;
-    }
-
-    .mapping-item:hover { border-color: rgba(51,119,255,.3); }
-
-    .target-name {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .target-type {
-      margin-top: 3px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      min-height: 32px;
-      align-items: center;
-    }
-
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      max-width: 100%;
-      border-radius: 6px;
-      padding: 5px 8px;
-      color: var(--primary);
-      background: rgba(51,119,255,.1);
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .chip button { color: var(--primary); background: transparent; padding: 0; min-width: 18px; min-height: 18px; }
     .empty-text { color: var(--placeholder); font-size: 13px; }
 
     .table-wrap {
@@ -989,7 +925,7 @@
       .dashboard-shell {
         padding: 20px;
       }
-      .mapping-toolbar, .mapping-item, .review-grid, .modal-grid, .dashboard-grid { grid-template-columns: 1fr; }
+      .review-grid, .modal-grid, .dashboard-grid { grid-template-columns: 1fr; }
       .dashboard-grid {
         grid-template-rows: auto;
       }
@@ -1035,7 +971,7 @@
             </div>
             <div class="module-toolbar" id="tableActions">
               <input id="iterationImportInput" class="file-input" type="file" accept=".xlsx" />
-              <button class="btn btn-primary" id="openImportBtn">处理评估数据</button>
+              <button class="btn btn-primary" id="openImportBtn">自动处理评估数据</button>
               <button class="btn btn-soft" id="addManualRecordBtn">新增空记录</button>
               <button class="btn btn-soft" id="importIterationBtn">导入迭代记录表</button>
               <button class="btn btn-soft" id="exportIterationBtn">导出迭代记录表</button>
@@ -1154,7 +1090,7 @@
               <div class="card-body stack-sm">
                 <div class="upload-box">
                   <div class="file-row">
-                    <input id="fileInput" class="file-input" type="file" accept=".xlsx,.xls" />
+                    <input id="fileInput" class="file-input" type="file" accept=".xlsx" />
                     <button class="btn btn-soft" id="chooseFileBtn">选择文件</button>
                     <span class="hint" id="fileName">未选择文件</span>
                   </div>
@@ -1174,29 +1110,12 @@
           <section class="main-col">
             <div class="card">
               <div class="card-header">
-                <h2 class="card-title">3. 选择 Sheet 与配置映射</h2>
-              </div>
-              <div class="card-body">
-                <div class="mapping-toolbar">
-                  <div>
-                    <label for="sheetSelect">当前 Sheet</label>
-                    <select id="sheetSelect"></select>
-                  </div>
-                  <button class="btn btn-soft" id="saveMappingBtn">保存映射</button>
-                </div>
-                <div style="height:14px"></div>
-                <div class="mapping-list" id="mappingList"></div>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="card-header">
-                <h2 class="card-title">4. 结果预览</h2>
+                <h2 class="card-title">3. 计算结果预览</h2>
               </div>
               <div class="card-body stack-sm">
                 <div class="table-wrap">
                   <table>
-                    <thead><tr><th>目标字段</th><th>可用数</th><th>有效总数</th><th>异常值</th><th>可用率</th></tr></thead>
+                    <thead><tr><th>得分字段</th><th>可用数</th><th>有效总数</th><th>异常值</th><th>可用率</th></tr></thead>
                     <tbody id="resultBody"></tbody>
                   </table>
                 </div>
@@ -1205,15 +1124,14 @@
 
             <div class="card">
               <div class="card-header">
-                <h2 class="card-title">5. 加入迭代记录</h2>
+                <h2 class="card-title">4. 加入迭代记录</h2>
               </div>
               <div class="card-body stack-sm">
-                <textarea id="copyText" readonly placeholder="上传 Excel 并完成映射后，这里会生成可复制的一行数据"></textarea>
+                <textarea id="copyText" readonly placeholder="上传 Excel 并完成自动识别后，这里会生成可复制的一行数据"></textarea>
                 <div class="file-row">
                   <button class="btn btn-primary" id="importCurrentBtn">加入迭代记录</button>
                   <button class="btn btn-ghost" id="recalculateBtn">重新计算</button>
                   <button class="btn btn-ghost" id="copyBtn">复制结果</button>
-                  <button class="btn btn-danger" id="clearMappingsBtn">清空映射</button>
                 </div>
               </div>
             </div>
@@ -1225,7 +1143,7 @@
   </main>
 
   <script>
-    const TargetFieldConfig = (() => {
+    const FieldConfig = (() => {
       const fields = [
         { key: 'model_eval_name', name: '模型评估名称', type: 'text', source: 'manual', placeholder: '例如：R2V 模型 A 评估' },
         { key: 'eval_date', name: '日期', type: 'date', source: 'manual', placeholder: '' },
@@ -1246,17 +1164,44 @@
         { key: 'training_data_link', name: '训练数据链接', type: 'url', source: 'manual', placeholder: '可填写训练数据链接' }
       ];
       return {
-        all: () => fields.slice(),
         manual: () => fields.filter(field => field.source === 'manual'),
-        calculated: () => fields.filter(field => field.source === 'calculated')
+        legacyCalculated: () => fields.filter(field => field.source === 'calculated')
       };
+    })();
+
+    const MetricFieldFactory = (() => {
+      const displayName = header => String(header || '')
+        .replace(/^[\s_]*质检[\s_]*/i, '')
+        .replace(/[\s_\-:：]+(?:得分|分数|score|rating)$/i, '')
+        .trim();
+
+      const normalizeName = value => displayName(value)
+        .toLowerCase()
+        .replace(/【.*?】/g, match => match.slice(1, -1))
+        .replace(/^可用率/, '')
+        .replace(/(?:得分|分数|score|rating)$/i, '')
+        .replace(/[·_\-\s/\\()[\]{}:：|]+/g, '')
+        .replace(/[^\u4e00-\u9fa5a-z0-9]/g, '');
+
+      const keyFromName = name => `metric:${normalizeName(name)}`;
+      const fromHeader = header => {
+        const name = displayName(header);
+        return { key: keyFromName(name), name, type: 'percent', source: 'calculated' };
+      };
+      const normalizeField = field => ({
+        key: field?.key || keyFromName(field?.name || ''),
+        name: String(field?.name || '').trim(),
+        type: 'percent',
+        source: 'calculated'
+      });
+      return { displayName, normalizeName, keyFromName, fromHeader, normalizeField };
     })();
 
     const StorageService = (() => {
       const key = 'model_eval_availability_mapping_v1';
       const defaultState = () => ({
-        version: 3,
-        mappings: {},
+        version: 4,
+        metricFields: [],
         manualValues: {},
         columnWidths: {},
         dashboardFields: {},
@@ -1268,7 +1213,7 @@
         return {
           ...fallback,
           ...(saved || {}),
-          version: 3,
+          version: 4,
           review: {
             ...fallback.review,
             ...((saved || {}).review || {})
@@ -1285,24 +1230,57 @@
     })();
 
     const CloudStorageService = (() => {
-      const endpoint = '/api/records';
+      const projectUrl = 'https://vhhrrdsawdcsihrrexgr.supabase.co';
+      const publishableKey = 'sb_publishable_b0hk92sgbpXYz1YYOKEryw_Me-96a2W';
+      const endpoint = `${projectUrl}/rest/v1/dashboard_state_revisions`;
+      const requestHeaders = {
+        apikey: publishableKey,
+        Authorization: `Bearer ${publishableKey}`,
+        Accept: 'application/json'
+      };
       const isAvailable = () => ['http:', 'https:'].includes(window.location.protocol);
       const load = async () => {
         if (!isAvailable()) return null;
-        const response = await fetch(endpoint, { headers: { Accept: 'application/json' } });
-        if (!response.ok) throw new Error('云端数据读取失败');
-        const payload = await response.json();
-        return payload?.state || null;
-      };
-      const save = async state => {
-        if (!isAvailable()) return false;
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ state })
+        const query = '?select=version,state,created_at&order=version.desc&limit=1';
+        const response = await fetch(`${endpoint}${query}`, {
+          headers: requestHeaders,
+          cache: 'no-store'
         });
-        if (!response.ok) throw new Error('云端数据保存失败');
-        return true;
+        if (!response.ok) throw new Error('云端数据读取失败');
+        const rows = await response.json();
+        const latest = rows?.[0];
+        return latest ? {
+          state: latest.state || null,
+          version: Number(latest.version) || 0,
+          updatedAt: latest.created_at || ''
+        } : null;
+      };
+      const save = async (state, baseVersion) => {
+        if (!isAvailable()) return false;
+        const response = await fetch(`${endpoint}?select=version,state,created_at`, {
+          method: 'POST',
+          headers: {
+            ...requestHeaders,
+            'Content-Type': 'application/json',
+            Prefer: 'return=representation'
+          },
+          body: JSON.stringify({ state, base_version: Number(baseVersion) || 0 })
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          const error = new Error(payload?.message || '云端数据保存失败');
+          error.code = payload?.code || '';
+          error.isConflict = error.code === '40001' || /VERSION_CONFLICT/.test(error.message);
+          throw error;
+        }
+        const rows = await response.json();
+        const saved = rows?.[0];
+        if (!saved) throw new Error('云端未返回保存结果');
+        return {
+          state: saved.state,
+          version: Number(saved.version) || 0,
+          updatedAt: saved.created_at || ''
+        };
       };
       return { isAvailable, load, save };
     })();
@@ -1487,17 +1465,17 @@
         const workbook = await this.parser.parse(file);
         const sheet = workbook.sheets[0];
         if (!sheet) throw new Error('迭代记录表为空');
-        const expectedHeaders = this.headers();
-        const missingHeaders = expectedHeaders.filter(header => !sheet.headers.includes(header));
-        if (missingHeaders.length) throw new Error(`表头结构不匹配，缺少：${missingHeaders.join('、')}`);
-        return sheet.rows.map((row, index) => this.rowToRecord(row, index)).filter(record => this.hasContent(record.data));
+        const { fields, metricFields } = this.fieldsFromHeaders(sheet.headers);
+        const records = sheet.rows.map((row, index) => this.rowToRecord(row, index, fields)).filter(record => this.hasContent(record.data));
+        return { records, metricFields };
       }
 
-      export(records) {
-        const headers = this.headers();
+      export(records, metricFields) {
+        const fields = [...FieldConfig.manual(), ...(metricFields || [])];
+        const headers = this.headers(metricFields);
         const rows = records.map(record => [
           this.formatExportTime(record.createdAt),
-          ...TargetFieldConfig.all().map(field => record.data?.[field.key] || '')
+          ...fields.map(field => record.data?.[field.key] || '')
         ]);
         const sheetXml = this.sheetXml([headers, ...rows]);
         const files = {
@@ -1519,15 +1497,35 @@
         return fileName;
       }
 
-      headers() {
-        return ['记录时间', ...TargetFieldConfig.all().map(field => field.name)];
+      headers(metricFields = []) {
+        return ['记录时间', ...FieldConfig.manual().map(field => field.name), ...metricFields.map(field => field.name)];
       }
 
-      rowToRecord(row, index) {
+      fieldsFromHeaders(headers) {
+        const manualFields = FieldConfig.manual();
+        const manualByName = new Map(manualFields.map(field => [field.name, field]));
+        manualByName.set('年月日', manualFields.find(field => field.key === 'eval_date'));
+        const metricByKey = new Map();
+        const fieldByHeader = [];
+        for (const header of headers || []) {
+          if (header === '记录时间') continue;
+          const manualField = manualByName.get(header);
+          if (manualField) {
+            fieldByHeader.push({ header, field: manualField });
+            continue;
+          }
+          const metricField = MetricFieldFactory.fromHeader(header);
+          if (!metricField.name || !MetricFieldFactory.normalizeName(metricField.name)) continue;
+          if (!metricByKey.has(metricField.key)) metricByKey.set(metricField.key, metricField);
+          fieldByHeader.push({ header, field: metricByKey.get(metricField.key) });
+        }
+        return { fields: fieldByHeader, metricFields: Array.from(metricByKey.values()) };
+      }
+
+      rowToRecord(row, index, fields) {
         const data = {};
-        TargetFieldConfig.all().forEach(field => {
-          const legacyName = field.key === 'eval_date' ? '年月日' : '';
-          data[field.key] = this.clean(row[field.name] ?? (legacyName ? row[legacyName] : ''));
+        fields.forEach(({ header, field }) => {
+          data[field.key] = this.clean(row[header]);
         });
         return {
           id: `record_${Date.now()}_${index}`,
@@ -1538,7 +1536,7 @@
       }
 
       hasContent(data) {
-        return TargetFieldConfig.all().some(field => this.clean(data[field.key]));
+        return Object.values(data || {}).some(value => this.clean(value));
       }
 
       clean(value) {
@@ -1679,27 +1677,62 @@
       }
     }
 
-    class MappingManager {
-      constructor(initialMappings = {}) { this.mappings = initialMappings || {}; }
-      add(targetKey, sheetName, columnName) {
-        if (!sheetName || !columnName) return;
-        const next = this.mappings[targetKey] ? this.mappings[targetKey].slice() : [];
-        if (!next.some(item => item.sheetName === sheetName && item.columnName === columnName)) next.push({ sheetName, columnName });
-        this.mappings[targetKey] = next;
+    class AutoColumnDetector {
+      detect(workbook) {
+        const mappings = {};
+        const fieldByKey = new Map();
+        const ignoredQualityColumns = [];
+
+        for (const sheet of workbook?.sheets || []) {
+          for (const header of sheet.headers || []) {
+            if (!String(header || '').includes('质检')) continue;
+            if (!this.isQualityColumn(header)) {
+              ignoredQualityColumns.push({ sheetName: sheet.name, columnName: header });
+              continue;
+            }
+            const values = sheet.rows.map(row => row[header]);
+            if (!this.hasScoreData(values)) {
+              ignoredQualityColumns.push({ sheetName: sheet.name, columnName: header });
+              continue;
+            }
+            const field = MetricFieldFactory.fromHeader(header);
+            if (!field.name || !MetricFieldFactory.normalizeName(field.name)) continue;
+            if (!fieldByKey.has(field.key)) fieldByKey.set(field.key, field);
+            if (!mappings[field.key]) mappings[field.key] = [];
+            mappings[field.key].push({ sheetName: sheet.name, columnName: header });
+          }
+        }
+
+        const fields = Array.from(fieldByKey.values());
+        const matchedColumnCount = Object.values(mappings).reduce((sum, refs) => sum + refs.length, 0);
+        return {
+          fields,
+          mappings,
+          matchedFieldCount: fields.length,
+          matchedColumnCount,
+          sheetCount: workbook?.sheets?.length || 0,
+          ignoredQualityColumns
+        };
       }
-      remove(targetKey, sheetName, columnName) {
-        this.mappings[targetKey] = (this.mappings[targetKey] || []).filter(item => item.sheetName !== sheetName || item.columnName !== columnName);
+
+      isQualityColumn(header) {
+        const text = String(header || '');
+        if (!text.includes('质检')) return false;
+        return !/(质检状态|标签|备注|质检合成检查)$/i.test(text);
       }
-      clear(targetKey) { this.mappings[targetKey] = []; }
-      clearAll() { this.mappings = {}; }
-      get(targetKey) { return this.mappings[targetKey] || []; }
-      all() { return this.mappings; }
+
+      hasScoreData(values) {
+        return values.some(value => {
+          const normalized = value === null || value === undefined ? '' : String(value).trim();
+          return normalized === '0' || normalized === '1' || normalized === '2';
+        });
+      }
     }
 
     class AvailabilityCalculator {
-      calculate(workbook, mappings) {
+      calculate(workbook, mappings, fields) {
         const results = {};
-        for (const field of TargetFieldConfig.calculated()) {
+        for (const field of fields || []) {
           const refs = mappings[field.key] || [];
           const values = refs.flatMap(ref => this.getColumnValues(workbook, ref.sheetName, ref.columnName));
           results[field.key] = this.calculateValues(values);
@@ -1718,9 +1751,12 @@
         for (const value of values) {
           const normalized = value === null || value === undefined ? '' : String(value).trim();
           if (!normalized) continue;
-          totalCount += 1;
-          if (normalized === '1' || normalized === '2') usableCount += 1;
-          else if (normalized !== '0') invalidCount += 1;
+          if (normalized === '0' || normalized === '1' || normalized === '2') {
+            totalCount += 1;
+            if (normalized === '1' || normalized === '2') usableCount += 1;
+          } else {
+            invalidCount += 1;
+          }
         }
         return {
           usableCount,
@@ -1732,8 +1768,8 @@
     }
 
     class CopyRowGenerator {
-      generate(manualValues, results) {
-        return TargetFieldConfig.all().map(field => {
+      generate(manualValues, results, fields) {
+        return fields.map(field => {
           const value = field.source === 'manual' ? manualValues[field.key] || '' : results[field.key]?.value || '';
           return String(value).replace(/[\t\r\n]+/g, ' ').trim();
         }).join('\t');
@@ -1741,9 +1777,9 @@
     }
 
     class TabRowParser {
-      parse(text) {
+      parse(text, fields) {
         const values = String(text || '').split('\t');
-        return TargetFieldConfig.all().reduce((record, field, index) => {
+        return fields.reduce((record, field, index) => {
           record[field.key] = String(values[index] || '').replace(/[\r\n]+/g, ' ').trim();
           return record;
         }, {});
@@ -1759,31 +1795,38 @@
       constructor() {
         this.loader = new LocalExcelLoader();
         this.iterationWorkbook = new IterationTableWorkbook();
+        this.detector = new AutoColumnDetector();
         this.calculator = new AvailabilityCalculator();
         this.generator = new CopyRowGenerator();
         this.rowParser = new TabRowParser();
         const saved = StorageService.load();
-        this.mappingManager = new MappingManager(saved.mappings);
+        this.detection = null;
         this.manualValues = saved.manualValues || {};
         this.columnWidths = saved.columnWidths || {};
-        this.dashboardFields = this.normalizeDashboardFields(saved.dashboardFields || {});
-        this.dashboardModels = saved.dashboardModels || {};
         this.chartColors = ['#3377ff', '#16a34a', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b', '#84cc16', '#f97316', '#14b8a6', '#6366f1'];
         this.columnResize = null;
         this.cloudSaveTimer = null;
+        this.cloudPollTimer = null;
+        this.cloudSaveInFlight = false;
+        this.cloudBlockedByConflict = false;
+        this.cloudVersion = 0;
+        this.localChangeSequence = 0;
+        this.lastCloudSavedSequence = 0;
         this.records = (saved.review?.records || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        this.migrateLegacyRecords(this.records);
+        this.metricFields = this.resolveMetricFields(saved.metricFields || [], this.records);
+        this.dashboardFields = this.normalizeDashboardFields(saved.dashboardFields || {});
+        this.dashboardModels = saved.dashboardModels || {};
         this.workbook = null;
-        this.currentSheetName = '';
         this.bindElements();
         this.bindEvents();
         this.renderManualFields();
-        this.renderMappingList();
         this.renderReviewTable();
         this.renderDimensionMenu();
         this.renderModelMenu();
         this.renderDashboard();
         this.recalculate();
-        this.loadCloudState();
+        this.loadCloudState().finally(() => this.startCloudPolling());
       }
 
       bindElements() {
@@ -1796,8 +1839,6 @@
           fileName: document.getElementById('fileName'),
           status: document.getElementById('status'),
           manualFields: document.getElementById('manualFields'),
-          sheetSelect: document.getElementById('sheetSelect'),
-          mappingList: document.getElementById('mappingList'),
           resultBody: document.getElementById('resultBody'),
           copyText: document.getElementById('copyText'),
           copyBtn: document.getElementById('copyBtn'),
@@ -1805,8 +1846,6 @@
           reviewTableHead: document.getElementById('reviewTableHead'),
           reviewTableBody: document.getElementById('reviewTableBody'),
           recalculateBtn: document.getElementById('recalculateBtn'),
-          saveMappingBtn: document.getElementById('saveMappingBtn'),
-          clearMappingsBtn: document.getElementById('clearMappingsBtn'),
           resetAllBtn: document.getElementById('resetAllBtn'),
           reviewSummary: document.getElementById('reviewSummary'),
           addManualRecordBtn: document.getElementById('addManualRecordBtn'),
@@ -1842,12 +1881,9 @@
         });
         this.el.chooseFileBtn.addEventListener('click', () => this.el.fileInput.click());
         this.el.fileInput.addEventListener('change', event => this.handleFile(event.target.files[0]));
-        this.el.sheetSelect.addEventListener('change', () => this.setCurrentSheet(this.el.sheetSelect.value));
-        this.el.saveMappingBtn.addEventListener('click', () => this.saveState('映射已保存'));
         this.el.recalculateBtn.addEventListener('click', () => this.recalculate(true));
         this.el.copyBtn.addEventListener('click', () => this.copyResult());
         this.el.importCurrentBtn.addEventListener('click', () => this.importCurrentResult());
-        this.el.clearMappingsBtn.addEventListener('click', () => { this.mappingManager.clearAll(); this.renderMappingList(); this.recalculate(true); this.saveState('已清空映射'); });
         this.el.resetAllBtn.addEventListener('click', () => this.resetAll());
         this.el.addManualRecordBtn.addEventListener('click', () => this.addManualRecord());
         this.el.importIterationBtn.addEventListener('click', () => this.el.iterationImportInput.click());
@@ -1902,15 +1938,98 @@
         if (page === 'dashboard') this.renderDashboard();
       }
 
+      legacyMetricField(field) {
+        const name = field.key === 'final_score_availability'
+          ? '最终得分'
+          : MetricFieldFactory.displayName(field.name);
+        return { key: MetricFieldFactory.keyFromName(name), name, type: 'percent', source: 'calculated' };
+      }
+
+      migrateLegacyRecords(records) {
+        const legacyFields = FieldConfig.legacyCalculated();
+        records.forEach(record => {
+          record.data = record.data || {};
+          legacyFields.forEach(legacy => {
+            if (!(legacy.key in record.data)) return;
+            const dynamicField = this.legacyMetricField(legacy);
+            if (!(dynamicField.key in record.data)) record.data[dynamicField.key] = record.data[legacy.key];
+            delete record.data[legacy.key];
+          });
+        });
+      }
+
+      resolveMetricFields(savedFields, records) {
+        const byKey = new Map();
+        const add = field => {
+          const normalized = MetricFieldFactory.normalizeField(field);
+          if (!normalized.name || !normalized.key || byKey.has(normalized.key)) return;
+          byKey.set(normalized.key, normalized);
+        };
+        (savedFields || []).forEach(add);
+        FieldConfig.legacyCalculated().forEach(legacy => {
+          const field = this.legacyMetricField(legacy);
+          if (records.some(record => String(record.data?.[field.key] ?? '').trim())) add(field);
+        });
+        const recordKeys = new Set(records.flatMap(record => Object.keys(record.data || {})));
+        Array.from(recordKeys).filter(key => key.startsWith('metric:')).forEach(key => {
+          if (!byKey.has(key)) add({ key, name: key.slice(7) });
+        });
+        return Array.from(byKey.values());
+      }
+
+      mergeMetricFields(incomingFields) {
+        const known = new Set(this.metricFields.map(field => field.key));
+        let added = 0;
+        for (const field of incomingFields || []) {
+          if (known.has(field.key)) continue;
+          this.metricFields.push(MetricFieldFactory.normalizeField(field));
+          this.dashboardFields[field.key] = true;
+          known.add(field.key);
+          added += 1;
+        }
+        return added;
+      }
+
+      allFields() {
+        return [...FieldConfig.manual(), ...this.metricFields];
+      }
+
+      metricFieldByName(name) {
+        const normalized = MetricFieldFactory.normalizeName(name);
+        return this.metricFields.find(field => MetricFieldFactory.normalizeName(field.name) === normalized);
+      }
+
+      metricValue(record, name) {
+        const field = this.metricFieldByName(name);
+        return field ? record?.data?.[field.key] || '' : '';
+      }
+
+      latestMetricRows(record, limit = 2) {
+        const preferredNames = ['最终得分', '基础质量'];
+        const ordered = [];
+        preferredNames.forEach(name => {
+          const field = this.metricFieldByName(name);
+          if (field && !ordered.some(item => item.key === field.key)) ordered.push(field);
+        });
+        this.metricFields.forEach(field => {
+          if (!ordered.some(item => item.key === field.key)) ordered.push(field);
+        });
+        return ordered.slice(0, limit).map(field => [field.name, record?.data?.[field.key] || '-']);
+      }
+
       normalizeDashboardFields(saved) {
-        return TargetFieldConfig.calculated().reduce((fields, field) => {
+        return this.metricFields.reduce((fields, field) => {
           fields[field.key] = saved[field.key] !== false;
           return fields;
         }, {});
       }
 
       renderDimensionMenu() {
-        this.el.dimensionMenu.innerHTML = TargetFieldConfig.calculated().map((field, index) => `
+        if (!this.metricFields.length) {
+          this.el.dimensionMenu.innerHTML = '<div class="empty-text">暂无得分字段</div>';
+          return;
+        }
+        this.el.dimensionMenu.innerHTML = this.metricFields.map((field, index) => `
           <label class="field-option">
             <input type="checkbox" data-dashboard-field="${this.escape(field.key)}" ${this.dashboardFields[field.key] ? 'checked' : ''} />
             <span class="legend-swatch" style="background:${this.chartColors[index % this.chartColors.length]}"></span>
@@ -2012,12 +2131,12 @@
           return;
         }
         if (moduleKey === 'latest') {
-          const latest = this.records[0]?.data || {};
+          const latestRecord = this.records[0];
+          const latest = latestRecord?.data || {};
           const rows = [
             ['最新模型', latest.model_eval_name || '-'],
             ['日期', latest.eval_date || '-'],
-            ['最终得分', latest.final_score_availability || '-'],
-            ['基础质量', latest.basic_quality || '-']
+            ...this.latestMetricRows(latestRecord)
           ];
           this.el.dashboardViewStage.innerHTML = `
             <div class="summary-list">
@@ -2032,7 +2151,7 @@
           return;
         }
         if (moduleKey === 'trend') {
-          const fields = TargetFieldConfig.calculated().filter(field => this.dashboardFields[field.key]);
+          const fields = this.metricFields.filter(field => this.dashboardFields[field.key]);
           const points = this.dashboardPoints();
           if (!fields.length || !points.length || !points.some(point => fields.some(field => point.values[field.key] !== null))) {
             this.el.dashboardViewStage.innerHTML = '<div class="comparison-empty">暂无数据</div>';
@@ -2051,9 +2170,9 @@
           return;
         }
         if (moduleKey === 'comparison') {
-          const fields = TargetFieldConfig.calculated();
+          const fields = this.metricFields;
           const records = this.records.slice(0, 2);
-          if (!records.length) {
+          if (!records.length || !fields.length) {
             this.el.dashboardViewStage.innerHTML = '<div class="comparison-empty">暂无数据</div>';
             return;
           }
@@ -2082,19 +2201,25 @@
         try {
           this.showStatus('info', '正在本地解析 Excel...');
           this.workbook = await this.loader.load(file);
-          this.currentSheetName = this.workbook.sheets[0]?.name || '';
           this.el.fileName.textContent = file.name;
-          this.renderWorkbook();
-          this.renderMappingList();
-          this.recalculate();
-          this.showStatus('success', `解析完成：${this.workbook.sheets.length} 个 sheet`);
+          const addedFields = this.autoDetectColumns();
+          const detection = this.detection;
+          this.showStatus(
+            detection.matchedFieldCount ? 'success' : 'warn',
+            detection.matchedFieldCount
+              ? `处理完成：识别 ${detection.matchedFieldCount} 个得分字段${addedFields ? `，评估表新增 ${addedFields} 列` : ''}`
+              : '未发现包含有效 0/1/2 数据的质检得分列'
+          );
         } catch (error) {
+          this.workbook = null;
+          this.detection = null;
+          this.recalculate();
           this.showStatus('error', error.message || '文件解析失败');
         }
       }
 
       renderManualFields() {
-        this.el.manualFields.innerHTML = TargetFieldConfig.manual().map(field => `
+        this.el.manualFields.innerHTML = FieldConfig.manual().map(field => `
           <div>
             <label for="manual_${field.key}">${this.escape(field.name)}</label>
             <input id="manual_${field.key}" data-key="${field.key}" type="${field.type === 'url' ? 'url' : field.type === 'date' ? 'date' : 'text'}" placeholder="${this.escape(field.placeholder || '')}" value="${this.escape(this.manualValues[field.key] || '')}" />
@@ -2109,130 +2234,23 @@
         });
       }
 
-      renderWorkbook() {
-        const sheets = this.workbook?.sheets || [];
-        this.el.sheetSelect.innerHTML = sheets.map(sheet => `<option value="${this.escape(sheet.name)}">${this.escape(sheet.name)}</option>`).join('');
-        this.el.sheetSelect.value = this.currentSheetName;
-        this.renderColumns();
-      }
-
-      setCurrentSheet(sheetName) {
-        this.currentSheetName = sheetName;
-        this.el.sheetSelect.value = sheetName;
-        this.renderWorkbook();
-      }
-
-      renderColumns() {
-        this.renderMappingList();
-      }
-
-      renderColumnOptions(field, selectedValue = '') {
-        const headers = this.currentSheet()?.headers || [];
-        if (!headers.length) return '<option value="">请先上传 Excel 并选择 sheet</option>';
-        return this.sortHeadersByRelevance(headers, field)
-          .map(header => `<option value="${this.escape(header)}" ${header === selectedValue ? 'selected' : ''}>${this.escape(header)}</option>`)
-          .join('');
-      }
-
-      sortHeadersByRelevance(headers, field) {
-        return headers
-          .map((header, index) => ({ header, index, score: this.columnRelevanceScore(header, field) }))
-          .sort((a, b) => b.score - a.score || a.index - b.index)
-          .map(item => item.header);
-      }
-
-      columnRelevanceScore(header, field) {
-        const normalizedHeader = this.normalizeForMatch(header);
-        const rawHeader = String(header || '').toLowerCase();
-        const names = [field.name, ...(field.aliases || [])].filter(Boolean);
-        let score = 0;
-        for (const name of names) {
-          const normalizedName = this.normalizeForMatch(name);
-          const rawName = String(name || '').toLowerCase().trim();
-          if (!normalizedName) continue;
-          if (normalizedHeader === normalizedName) score += 120;
-          if (normalizedHeader.includes(normalizedName)) score += 90;
-          if (rawHeader.includes(rawName)) score += 50;
-          const tokens = normalizedName.match(/[a-z0-9]+|[\u4e00-\u9fa5]/g) || [];
-          score += tokens.filter(token => normalizedHeader.includes(token)).length * 8;
-        }
-        if (score > 0 && /得分|评分|分数|score|rating/i.test(rawHeader)) score += 30;
-        if (score > 0 && /可用|availability/i.test(rawHeader)) score += 10;
-        return score;
-      }
-
-      normalizeForMatch(value) {
-        return String(value || '')
-          .toLowerCase()
-          .replace(/【.*?】/g, '')
-          .replace(/[·_\-\s/\\()[\]{}:：|]+/g, '')
-          .replace(/[^\u4e00-\u9fa5a-z0-9]/g, '');
-      }
-
-      renderMappingList() {
-        const hasColumns = (this.currentSheet()?.headers || []).length > 0;
-        this.el.mappingList.innerHTML = TargetFieldConfig.calculated().map(field => {
-          const refs = this.mappingManager.get(field.key);
-          const selectedValue = refs.find(ref => ref.sheetName === this.currentSheetName)?.columnName || refs[0]?.columnName || '';
-          const chips = refs.map(ref => `
-            <span class="chip" title="${this.escape(ref.sheetName)} / ${this.escape(ref.columnName)}">
-              <span>${this.escape(ref.sheetName)} / ${this.escape(ref.columnName)}</span>
-              <button data-action="remove" data-key="${field.key}" data-sheet="${this.escape(ref.sheetName)}" data-column="${this.escape(ref.columnName)}">×</button>
-            </span>
-          `).join('');
-          return `
-            <div class="mapping-item">
-              <div>
-                <div class="target-name">${this.escape(field.name)}</div>
-                <div class="target-type">目标多维表字段 · 百分比</div>
-              </div>
-              <div class="chips">${chips || '<span class="empty-text">未选择匹配列，结果将为空</span>'}</div>
-              <div class="file-row">
-                <select data-role="column-picker" data-key="${field.key}" ${hasColumns ? '' : 'disabled'}>${this.renderColumnOptions(field, selectedValue)}</select>
-                <button class="btn btn-soft" data-action="add" data-key="${field.key}" ${hasColumns ? '' : 'disabled'}>确认匹配列</button>
-                <button class="btn btn-ghost" data-action="clear" data-key="${field.key}">清空</button>
-              </div>
-            </div>
-          `;
-        }).join('');
-        this.el.mappingList.querySelectorAll('button').forEach(button => button.addEventListener('click', () => this.handleMappingAction(button)));
-        this.el.mappingList.querySelectorAll('[data-role="column-picker"]').forEach(picker => {
-          picker.addEventListener('change', () => {
-            this.mappingManager.clear(picker.dataset.key);
-            this.addSelectedColumn(picker.dataset.key, picker.value);
-          });
-        });
-      }
-
-      addSelectedColumn(key, columnName) {
-        if (!this.currentSheetName || !columnName) {
-          this.showStatus('warn', '请先上传 Excel，并在当前指标行选择匹配列');
-          return;
-        }
-        this.mappingManager.add(key, this.currentSheetName, columnName);
-        this.renderMappingList();
-        this.recalculate(true);
-        this.saveState();
-      }
-
-      handleMappingAction(button) {
-        const action = button.dataset.action;
-        const key = button.dataset.key;
-        if (action === 'add') {
-          const picker = button.parentElement.querySelector('[data-role="column-picker"]');
-          this.addSelectedColumn(key, picker?.value || '');
-          return;
-        }
-        if (action === 'clear') this.mappingManager.clear(key);
-        if (action === 'remove') this.mappingManager.remove(key, button.dataset.sheet, button.dataset.column);
-        this.renderMappingList();
-        this.recalculate(true);
-        this.saveState();
+      autoDetectColumns() {
+        if (!this.workbook) return 0;
+        this.detection = this.detector.detect(this.workbook);
+        const addedFields = this.mergeMetricFields(this.detection.fields);
+        this.renderReviewTable();
+        this.renderDimensionMenu();
+        this.renderDashboard();
+        this.recalculate();
+        return addedFields;
       }
 
       recalculate(showMessage = false) {
-        const results = this.calculator.calculate(this.workbook, this.mappingManager.all());
-        this.el.resultBody.innerHTML = TargetFieldConfig.calculated().map(field => {
+        const currentFields = this.detection?.fields || [];
+        const mappings = this.detection?.mappings || {};
+        const results = this.calculator.calculate(this.workbook, mappings, currentFields);
+        this.currentResults = results;
+        this.el.resultBody.innerHTML = currentFields.length ? currentFields.map(field => {
           const result = results[field.key] || { usableCount: 0, totalCount: 0, invalidCount: 0, value: '' };
           return `<tr>
             <td>${this.escape(field.name)}</td>
@@ -2241,15 +2259,15 @@
             <td class="${result.invalidCount ? 'warn-text' : ''}">${result.invalidCount}</td>
             <td class="percent">${result.value || '-'}</td>
           </tr>`;
-        }).join('');
-        this.el.copyText.value = this.generator.generate(this.manualValues, results);
+        }).join('') : '<tr><td colspan="5"><span class="empty-text">上传评估 Excel 后自动生成计算结果</span></td></tr>';
+        this.el.copyText.value = this.generator.generate(this.manualValues, results, this.allFields());
         if (showMessage) this.showStatus('success', '已重新计算');
       }
 
       async copyResult() {
         const text = this.el.copyText.value;
         if (!text.trim()) {
-          this.showStatus('warn', '暂无可复制内容，请先上传 Excel 并配置映射');
+          this.showStatus('warn', '暂无可复制内容，请先上传 Excel 并完成自动识别');
           return;
         }
         try {
@@ -2278,10 +2296,10 @@
       importCurrentResult() {
         const text = this.el.copyText.value;
         if (!text.trim()) {
-          this.showStatus('warn', '暂无可导入内容，请先上传 Excel 并配置映射');
+          this.showStatus('warn', '暂无可导入内容，请先上传 Excel 并完成自动识别');
           return;
         }
-        const data = this.rowParser.parse(text);
+        const data = this.rowParser.parse(text, this.allFields());
         const record = {
           id: `record_${Date.now()}`,
           createdAt: new Date().toISOString(),
@@ -2298,7 +2316,7 @@
       }
 
       addManualRecord() {
-        const data = TargetFieldConfig.all().reduce((record, field) => {
+        const data = this.allFields().reduce((record, field) => {
           record[field.key] = '';
           return record;
         }, {});
@@ -2318,9 +2336,12 @@
       async importIterationWorkbook(file) {
         try {
           this.showTableStatus('正在导入迭代记录表...');
-          const importedRecords = await this.iterationWorkbook.import(file);
-          this.records = importedRecords.slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+          const imported = await this.iterationWorkbook.import(file);
+          this.metricFields = imported.metricFields;
+          this.records = imported.records.slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+          this.dashboardFields = this.normalizeDashboardFields({});
           this.renderReviewTable();
+          this.renderDimensionMenu();
           this.syncDashboardModelSelection();
           this.renderModelMenu();
           this.renderDashboard();
@@ -2334,7 +2355,7 @@
 
       exportIterationWorkbook() {
         try {
-          const fileName = this.iterationWorkbook.export(this.records);
+          const fileName = this.iterationWorkbook.export(this.records, this.metricFields);
           this.showTableStatus(this.records.length ? `已导出 ${fileName}` : `暂无记录，已导出空白模板 ${fileName}`);
         } catch (error) {
           this.showTableStatus(error.message || '迭代记录表导出失败', true);
@@ -2345,7 +2366,7 @@
         this.syncDashboardModelSelection();
         this.renderDashboardSummary();
         this.renderVersionComparison();
-        const fields = TargetFieldConfig.calculated().filter(field => this.dashboardFields[field.key]);
+        const fields = this.metricFields.filter(field => this.dashboardFields[field.key]);
         const points = this.dashboardPoints();
         if (!fields.length || !points.length || !points.some(point => fields.some(field => point.values[field.key] !== null))) {
           this.el.trendChart.removeAttribute('viewBox');
@@ -2360,12 +2381,12 @@
 
       renderDashboardSummary() {
         if (this.el.dashboardRecordTotal) this.el.dashboardRecordTotal.textContent = this.records.length;
-        const latest = this.records[0]?.data || {};
+        const latestRecord = this.records[0];
+        const latest = latestRecord?.data || {};
         const rows = [
           ['最新模型', latest.model_eval_name || '-'],
           ['日期', latest.eval_date || '-'],
-          ['最终得分', latest.final_score_availability || '-'],
-          ['基础质量', latest.basic_quality || '-']
+          ...this.latestMetricRows(latestRecord)
         ];
         if (this.el.dashboardLatestSummary) {
           this.el.dashboardLatestSummary.innerHTML = rows.map(([label, value]) => `
@@ -2379,9 +2400,9 @@
 
       renderVersionComparison() {
         if (!this.el.versionComparison) return;
-        const fields = TargetFieldConfig.calculated();
+        const fields = this.metricFields;
         const records = this.records.slice(0, 2);
-        if (!records.length) {
+        if (!records.length || !fields.length) {
           this.el.versionComparison.innerHTML = '<div class="comparison-empty">暂无版本数据</div>';
           return;
         }
@@ -2477,7 +2498,7 @@
           .map(record => {
             const date = this.parseChartDate(record.data?.eval_date || record.createdAt);
             if (!date) return null;
-            const values = TargetFieldConfig.calculated().reduce((output, field) => {
+            const values = this.metricFields.reduce((output, field) => {
               output[field.key] = this.parsePercent(record.data?.[field.key]);
               return output;
             }, {});
@@ -2513,7 +2534,7 @@
         const y = value => padding.top + (1 - value / 100) * plotHeight;
         const axisColor = '#cfd7e6';
         const gridColor = '#edf1f7';
-        const fieldIndex = new Map(TargetFieldConfig.calculated().map((field, index) => [field.key, index]));
+        const fieldIndex = new Map(this.metricFields.map((field, index) => [field.key, index]));
         let svg = `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
         [0, 25, 50, 75, 100].forEach(tick => {
           const yy = y(tick);
@@ -2555,7 +2576,7 @@
       }
 
       trendLegendHtml(fields) {
-        const fieldIndex = new Map(TargetFieldConfig.calculated().map((field, index) => [field.key, index]));
+        const fieldIndex = new Map(this.metricFields.map((field, index) => [field.key, index]));
         return fields.map(field => {
           const color = this.chartColors[(fieldIndex.get(field.key) || 0) % this.chartColors.length];
           return `<span class="legend-item"><span class="legend-swatch" style="background:${color}"></span>${this.escape(field.name)}</span>`;
@@ -2644,7 +2665,7 @@
         const startRow = Number(cell.dataset.rowIndex);
         const startCol = Number(cell.dataset.colIndex);
         const rows = text.replace(/\r/g, '').split('\n').filter((row, index, list) => row || index < list.length - 1);
-        const fields = TargetFieldConfig.all();
+        const fields = this.allFields();
         rows.forEach((rowText, rowOffset) => {
           const recordIndex = startRow + rowOffset;
           while (recordIndex >= this.records.length) this.records.push(this.createEmptyRecord());
@@ -2668,7 +2689,7 @@
       }
 
       createEmptyRecord() {
-        const data = TargetFieldConfig.all().reduce((record, field) => {
+        const data = this.allFields().reduce((record, field) => {
           record[field.key] = '';
           return record;
         }, {});
@@ -2681,7 +2702,7 @@
       }
 
       renderReviewTable() {
-        const fields = TargetFieldConfig.all();
+        const fields = this.allFields();
         const columns = this.tableColumns();
         const colgroup = `<colgroup>${columns.map(column => `<col data-column-key="${this.escape(column.key)}" style="width:${this.getColumnWidth(column.key)}px">`).join('')}</colgroup>`;
         this.el.reviewTableHead.parentElement.querySelector('colgroup')?.remove();
@@ -2703,7 +2724,7 @@
       tableColumns() {
         return [
           { key: 'createdAt', name: '记录时间' },
-          ...TargetFieldConfig.all().map(field => ({ key: field.key, name: field.name, field }))
+          ...this.allFields().map(field => ({ key: field.key, name: field.name, field }))
         ];
       }
 
@@ -2753,10 +2774,13 @@
       }
 
       renderReviewSummary() {
-        const latest = this.records[0]?.data || {};
+        const latestRecord = this.records[0];
+        const latest = latestRecord?.data || {};
+        const summaryField = this.metricFieldByName('最终得分') || this.metricFields[0];
+        const summaryValue = summaryField ? latest[summaryField.key] || '-' : '-';
         this.el.reviewSummary.innerHTML = `
           <div class="review-stat"><strong>${this.records.length}</strong><span>迭代记录</span></div>
-          <div class="review-stat"><strong>${this.escape(latest.final_score_availability || '-')}</strong><span>最新最终得分</span></div>
+          <div class="review-stat"><strong>${this.escape(summaryValue)}</strong><span>最新${this.escape(summaryField?.name || '得分')}</span></div>
           <div class="review-stat"><strong>${this.escape(latest.model_eval_name || '-')}</strong><span>最新模型评估名称</span></div>
         `;
       }
@@ -2772,24 +2796,29 @@
 
       resetAll() {
         StorageService.clear();
-        this.mappingManager.clearAll();
+        this.detection = null;
+        this.workbook = null;
         this.manualValues = {};
+        this.metricFields = [];
         this.dashboardFields = this.normalizeDashboardFields({});
         this.dashboardModels = {};
         this.records = [];
         this.renderReviewTable();
         this.renderManualFields();
-        this.renderMappingList();
         this.renderDimensionMenu();
         this.renderModelMenu();
         this.renderDashboard();
         this.recalculate();
-        this.showStatus('success', '已重置基础信息、映射配置和迭代记录表');
+        this.el.fileInput.value = '';
+        this.el.fileName.textContent = '未选择文件';
+        this.saveState();
+        this.showStatus('success', '已重置基础信息、自动识别结果和迭代记录表');
         this.showTableStatus('已重置迭代记录表');
       }
 
       saveState(message = '') {
         const state = this.currentState();
+        this.localChangeSequence += 1;
         StorageService.save(state);
         this.scheduleCloudSave(state);
         if (message) this.showStatus('success', message);
@@ -2797,7 +2826,7 @@
 
       currentState() {
         return {
-          mappings: this.mappingManager.all(),
+          metricFields: this.metricFields,
           manualValues: this.manualValues,
           columnWidths: this.columnWidths,
           dashboardFields: this.dashboardFields,
@@ -2810,14 +2839,15 @@
 
       applyState(state) {
         const normalized = StorageService.normalize(state);
-        this.mappingManager = new MappingManager(normalized.mappings);
+        this.detection = null;
         this.manualValues = normalized.manualValues || {};
         this.columnWidths = normalized.columnWidths || {};
+        this.records = (normalized.review?.records || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        this.migrateLegacyRecords(this.records);
+        this.metricFields = this.resolveMetricFields(normalized.metricFields || [], this.records);
         this.dashboardFields = this.normalizeDashboardFields(normalized.dashboardFields || {});
         this.dashboardModels = normalized.dashboardModels || {};
-        this.records = (normalized.review?.records || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         this.renderManualFields();
-        this.renderMappingList();
         this.renderReviewTable();
         this.renderDimensionMenu();
         this.renderModelMenu();
@@ -2827,13 +2857,22 @@
       async loadCloudState() {
         if (!CloudStorageService.isAvailable()) return;
         try {
-          const state = await CloudStorageService.load();
-          if (!state) {
-            this.showTableStatus('云端暂无数据，本地保存');
+          const snapshot = await CloudStorageService.load();
+          if (!snapshot) {
+            this.showTableStatus('云端初始化中...');
+            this.saveState();
+            return;
+          }
+          this.cloudVersion = snapshot.version;
+          const state = snapshot.state;
+          if (!state || !Object.keys(state).length) {
+            this.showTableStatus('正在将本地数据迁移到云端...');
+            this.saveState();
             return;
           }
           this.applyState(state);
           StorageService.save(state);
+          this.lastCloudSavedSequence = this.localChangeSequence;
           this.showTableStatus('云端已同步');
         } catch (error) {
           this.showTableStatus('云端不可用，本地保存', true);
@@ -2843,18 +2882,62 @@
       scheduleCloudSave(state) {
         if (!CloudStorageService.isAvailable()) return;
         clearTimeout(this.cloudSaveTimer);
+        if (this.cloudBlockedByConflict) {
+          this.showTableStatus('检测到协作冲突，请刷新页面后继续编辑', true);
+          return;
+        }
+        const sequence = this.localChangeSequence;
         this.showTableStatus('正在同步云端...');
         this.cloudSaveTimer = setTimeout(async () => {
-          try {
-            await CloudStorageService.save(state);
-            this.showTableStatus('云端已同步');
-          } catch (error) {
-            this.showTableStatus('云端同步失败，本地已保存', true);
+          if (this.cloudSaveInFlight) {
+            this.scheduleCloudSave(this.currentState());
+            return;
           }
-        }, 700);
+          this.cloudSaveInFlight = true;
+          try {
+            const snapshot = await CloudStorageService.save(state, this.cloudVersion);
+            this.cloudVersion = snapshot.version;
+            this.lastCloudSavedSequence = Math.max(this.lastCloudSavedSequence, sequence);
+            if (sequence < this.localChangeSequence) {
+              this.scheduleCloudSave(this.currentState());
+            } else {
+              this.showTableStatus(`云端已同步 · 版本 ${this.cloudVersion}`);
+            }
+          } catch (error) {
+            if (error.isConflict) {
+              this.cloudBlockedByConflict = true;
+              this.showTableStatus('其他人已更新云端；当前修改未覆盖对方数据，请刷新后重试', true);
+            } else {
+              this.showTableStatus('云端同步失败，本地已保存', true);
+            }
+          } finally {
+            this.cloudSaveInFlight = false;
+          }
+        }, 1200);
       }
 
-      currentSheet() { return this.workbook?.sheets?.find(sheet => sheet.name === this.currentSheetName); }
+      startCloudPolling() {
+        if (!CloudStorageService.isAvailable() || this.cloudPollTimer) return;
+        this.cloudPollTimer = window.setInterval(() => this.refreshCloudState(), 10000);
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) this.refreshCloudState();
+        });
+      }
+
+      async refreshCloudState() {
+        const hasPendingChanges = this.lastCloudSavedSequence < this.localChangeSequence;
+        if (document.hidden || hasPendingChanges || this.cloudSaveInFlight || this.cloudBlockedByConflict) return;
+        try {
+          const snapshot = await CloudStorageService.load();
+          if (!snapshot || snapshot.version <= this.cloudVersion) return;
+          this.cloudVersion = snapshot.version;
+          this.applyState(snapshot.state);
+          StorageService.save(snapshot.state);
+          this.showTableStatus(`已同步其他人的更新 · 版本 ${this.cloudVersion}`);
+        } catch (error) {
+          this.showTableStatus('云端刷新失败，本地数据不受影响', true);
+        }
+      }
 
       showStatus(type, message) {
         this.el.status.className = `status ${type} show`;
