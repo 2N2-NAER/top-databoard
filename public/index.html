@@ -1,0 +1,2942 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>模型评估可用率计算器</title>
+  <style>
+    :root {
+      --bg: #f6f4f1;
+      --surface: #ffffff;
+      --surface-soft: #f4f1ed;
+      --surface-warm: #eee8df;
+      --primary: #f25a1d;
+      --primary-dark: #d9440d;
+      --ink: #1d2029;
+      --text: #1d2029;
+      --muted: #85817b;
+      --placeholder: #b7b0a8;
+      --border: #e2ddd6;
+      --success: #39b86a;
+      --warning: #e8a11d;
+      --danger: #e05243;
+      --purple: #6977ec;
+      --shadow: 0 20px 60px rgba(53, 45, 39, 0.12);
+      --soft-shadow: 0 12px 28px rgba(61, 52, 45, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background: var(--bg);
+      font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    button {
+      cursor: pointer;
+      border: 0;
+      transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
+    }
+
+    button:disabled { cursor: not-allowed; opacity: .58; }
+
+    .page {
+      width: 100%;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: 190px minmax(0, 1fr);
+      background: var(--bg);
+    }
+
+    .hero {
+      padding: 34px 40px 24px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      color: var(--primary);
+      background: rgba(242, 90, 29, .1);
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 760px;
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .page-nav {
+      grid-row: 1 / span 3;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 34px 20px;
+      border-right: 1px solid var(--border);
+      background: #f1eee9;
+    }
+
+    .page-tab {
+      min-height: 48px;
+      border: 0;
+      border-radius: 14px;
+      padding: 0 14px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 15px;
+      font-weight: 800;
+      justify-content: flex-start;
+      letter-spacing: 0;
+    }
+
+    .page-tab.active {
+      color: #fff;
+      background: var(--ink);
+      box-shadow: 0 10px 22px rgba(29,32,41,.16);
+    }
+
+    .page-panel[hidden] {
+      display: none;
+    }
+
+    .table-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .module-toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--soft-shadow);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 20px 22px 14px;
+      border-bottom: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title::before {
+      content: "";
+      display: inline-block;
+      width: 4px;
+      height: 16px;
+      border-radius: 999px;
+      background: var(--primary);
+    }
+
+    .card-desc {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .card-body { padding: 22px; }
+
+    .stack { display: grid; gap: 14px; }
+    .stack-sm { display: grid; gap: 10px; }
+
+    label {
+      display: block;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"], input[type="url"], input[type="date"], select, textarea {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--text);
+      padding: 9px 11px;
+      outline: none;
+      transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: rgba(242, 90, 29, .55);
+      box-shadow: 0 0 0 3px rgba(242, 90, 29, .1);
+    }
+
+    .upload-box {
+      border: 1px dashed rgba(242, 90, 29, .38);
+      background: rgba(242, 90, 29, .05);
+      border-radius: 18px;
+      padding: 16px;
+    }
+
+    .file-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .file-input { display: none; }
+
+    .btn {
+      min-height: 40px;
+      border-radius: 12px;
+      padding: 0 14px;
+      font-size: 14px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .btn-primary { color: #fff; background: var(--ink); }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-soft { color: var(--primary-dark); background: rgba(242, 90, 29, .1); }
+    .btn-soft:hover { background: rgba(242, 90, 29, .16); }
+    .btn-ghost { color: var(--muted); background: var(--surface-soft); }
+    .btn-ghost:hover { color: var(--text); background: #ebe5dc; }
+    .btn-danger { color: #b42318; background: rgba(255, 126, 115, .14); }
+    .btn-danger:hover { background: rgba(255, 126, 115, .22); }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .status {
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      display: none;
+    }
+
+    .status.show { display: block; }
+    .status.info { color: var(--primary-dark); background: rgba(242,90,29,.09); }
+    .status.success { color: #198c38; background: rgba(74,212,108,.12); }
+    .status.warn { color: #956000; background: rgba(255,170,51,.15); }
+    .status.error { color: #b42318; background: rgba(255,126,115,.15); }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      border-radius: 12px;
+      padding: 7px 10px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .tab.active {
+      border-color: rgba(51,119,255,.45);
+      color: var(--primary);
+      background: rgba(242,90,29,.1);
+    }
+
+    .main-col { display: grid; gap: 18px; }
+    .empty-text { color: var(--placeholder); font-size: 13px; }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: #fff;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px;
+      text-align: left;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #f8f5f0;
+      font-weight: 700;
+      z-index: 1;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    .percent { color: var(--primary); font-weight: 800; }
+    .warn-text { color: #956000; }
+
+    .review-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .review-table-wrap {
+      max-height: 66vh;
+    }
+
+    .review-table {
+      min-width: 2380px;
+      table-layout: fixed;
+    }
+
+    .review-table th,
+    .review-table td {
+      width: 130px;
+      vertical-align: top;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      position: relative;
+    }
+
+    .review-table th:first-child,
+    .review-table td:first-child {
+      width: 150px;
+    }
+
+    .review-table th[data-field="model_eval_name"],
+    .review-table td[data-field="model_eval_name"],
+    .review-table th[data-field="model_eval_report"],
+    .review-table td[data-field="model_eval_report"],
+    .review-table th[data-field="model_eval_link"],
+    .review-table td[data-field="model_eval_link"],
+    .review-table th[data-field="training_data_link"],
+    .review-table td[data-field="training_data_link"] {
+      width: 220px;
+    }
+
+    .resize-handle {
+      position: absolute;
+      top: 0;
+      right: -4px;
+      z-index: 5;
+      width: 8px;
+      height: 100%;
+      cursor: col-resize;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .resize-handle::after {
+      content: "";
+      position: absolute;
+      top: 8px;
+      bottom: 8px;
+      left: 3px;
+      width: 2px;
+      border-radius: 999px;
+      background: transparent;
+    }
+
+    .review-table th:hover .resize-handle::after,
+    .resize-handle.active::after {
+      background: rgba(51,119,255,.45);
+    }
+
+    .review-table th:first-child,
+    .review-table td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: #fff;
+    }
+
+    .review-table th:first-child {
+      z-index: 3;
+      background: #f8f5f0;
+    }
+
+    .review-table td[contenteditable="true"] {
+      cursor: text;
+      background: #fff;
+    }
+
+    .review-table td[contenteditable="true"]:focus {
+      outline: 2px solid rgba(242,90,29,.32);
+      outline-offset: -2px;
+      background: rgba(242,90,29,.05);
+    }
+
+    .row-index {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .review-stat {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 12px;
+      background: #fff;
+      box-shadow: var(--soft-shadow);
+    }
+
+    .review-stat strong {
+      display: block;
+      color: var(--text);
+      font-size: 20px;
+      line-height: 1.2;
+    }
+
+    .review-stat span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .review-empty {
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      padding: 18px;
+      color: var(--muted);
+      background: var(--surface-soft);
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      background: rgba(17, 20, 26, .36);
+      padding: 24px;
+      overflow: auto;
+    }
+
+    .modal-backdrop.show { display: block; }
+    body.modal-open { overflow: hidden; }
+
+    .modal-panel {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .modal-title { margin: 0; font-size: 18px; font-weight: 800; }
+    .modal-body { padding: 18px; }
+    .modal-grid { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 18px; align-items: start; }
+    .main-review { display: grid; gap: 18px; }
+    .dashboard-shell { display: grid; gap: 18px; }
+
+    .main-review,
+    .dashboard-shell {
+      padding: 0 40px 40px;
+      min-width: 0;
+    }
+
+    .dashboard-shell {
+      padding-top: 10px;
+    }
+
+    .dashboard-titlebar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .dashboard-titlebar h2 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 900;
+    }
+
+    .dashboard-titlebar p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(330px, 1fr));
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .dashboard-module-wide { min-width: 0; }
+    .dashboard-module[data-dashboard-module="total"] { grid-area: 1 / 1; }
+    .dashboard-module[data-dashboard-module="trend"] { grid-area: 1 / 2; }
+    .dashboard-module[data-dashboard-module="latest"] { grid-area: 2 / 1; }
+    .dashboard-module[data-dashboard-module="comparison"] { grid-area: 2 / 2; }
+
+    .dashboard-placeholder {
+      min-height: 220px;
+      color: var(--muted);
+      text-align: center;
+      padding: 28px;
+      border: 1px dashed #d9cfe4;
+      border-radius: 18px;
+      background: #fbf7ff;
+    }
+
+    .dashboard-module {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: var(--soft-shadow);
+      min-width: 0;
+      min-height: 330px;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .dashboard-module.metric-module {
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .dashboard-module-head {
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .dashboard-module-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dashboard-module-title::before {
+      content: "⋮";
+      color: #b9b2aa;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .dashboard-module-desc {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .metric-body {
+      display: grid;
+      place-items: center;
+      min-height: 0;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .metric-label {
+      margin: 0 0 16px;
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .metric-value {
+      color: #bd14df;
+      font-size: clamp(54px, 6vw, 86px);
+      font-weight: 900;
+      line-height: .9;
+    }
+
+    .metric-sub {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .summary-list {
+      display: grid;
+      gap: 12px;
+      padding: 18px;
+      align-content: start;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: var(--surface-soft);
+    }
+
+    .summary-row span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .summary-row strong {
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .field-menu-wrap { position: relative; }
+
+    .dashboard-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .icon-btn {
+      width: 34px;
+      min-width: 34px;
+      height: 34px;
+      min-height: 34px;
+      padding: 0;
+      border-radius: 12px;
+      color: #fff;
+      background: var(--ink);
+      font-size: 18px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .field-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      z-index: 10;
+      width: 240px;
+      max-height: 320px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      background: #fff;
+      padding: 8px;
+    }
+
+    .model-menu { width: 320px; }
+
+    .field-menu[hidden] { display: none; }
+
+    .field-option {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 8px;
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .field-option:hover { background: var(--surface-soft); }
+    .field-option input { width: auto; }
+
+    .model-option-text {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .model-option-text strong,
+    .model-option-text span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .model-option-text span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .trend-chart-wrap {
+      position: relative;
+      min-height: 0;
+      padding: 12px 14px 14px;
+      overflow: hidden;
+    }
+
+    .trend-chart {
+      width: 100%;
+      min-width: 760px;
+      height: 224px;
+      display: block;
+    }
+
+    .chart-scroll {
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding-bottom: 6px;
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 8px 14px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .legend-swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+    }
+
+    .chart-tooltip {
+      position: fixed;
+      z-index: 30;
+      pointer-events: none;
+      min-width: 180px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: var(--text);
+      background: rgba(255,255,255,.96);
+      box-shadow: var(--shadow);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .chart-tooltip[hidden] { display: none; }
+    .record-name { font-weight: 700; color: var(--text); }
+    .record-meta { color: var(--muted); font-size: 12px; }
+
+    .comparison-wrap {
+      display: grid;
+      gap: 14px;
+      padding: 12px 14px 14px;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .comparison-chart-scroll {
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding-bottom: 6px;
+    }
+
+    .comparison-chart {
+      width: 100%;
+      min-width: 940px;
+      height: 218px;
+      display: block;
+    }
+
+    .module-expand-btn {
+      width: 32px;
+      min-width: 32px;
+      height: 32px;
+      min-height: 32px;
+      padding: 0;
+      border-radius: 10px;
+      color: var(--ink);
+      background: var(--surface-soft);
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .dashboard-view-modal {
+      z-index: 28;
+      padding: 18px;
+    }
+
+    .dashboard-view-panel {
+      width: min(1380px, 100%);
+      min-height: calc(100vh - 36px);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .dashboard-view-body {
+      min-height: 0;
+      padding: 16px;
+    }
+
+    .dashboard-view-stage {
+      min-height: calc(100vh - 136px);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .dashboard-view-stage .trend-chart-wrap,
+    .dashboard-view-stage .comparison-wrap {
+      min-height: calc(100vh - 154px);
+      padding: 18px;
+    }
+
+    .dashboard-view-stage .trend-chart {
+      height: min(68vh, 680px);
+      min-width: 1080px;
+    }
+
+    .dashboard-view-stage .comparison-chart {
+      height: min(68vh, 680px);
+      min-width: 1160px;
+    }
+
+    .dashboard-view-stage .summary-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .comparison-legend {
+      display: flex;
+      gap: 10px 18px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .comparison-empty {
+      min-height: 132px;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      color: var(--muted);
+      text-align: center;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      background: var(--surface-soft);
+      font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
+      .page {
+        width: 100%;
+        min-height: 100vh;
+        display: block;
+      }
+      .hero, .grid { grid-template-columns: 1fr; }
+      .hero-actions { justify-content: flex-start; }
+      .page-nav {
+        flex-direction: row;
+        padding: 0 20px 18px;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+        background: transparent;
+      }
+      .page-tab { flex: 1; justify-content: center; }
+      .main-review,
+      .dashboard-shell {
+        padding: 20px;
+      }
+      .review-grid, .modal-grid, .dashboard-grid { grid-template-columns: 1fr; }
+      .dashboard-grid {
+        grid-template-rows: auto;
+      }
+      .dashboard-module[data-dashboard-module="total"],
+      .dashboard-module[data-dashboard-module="trend"],
+      .dashboard-module[data-dashboard-module="latest"],
+      .dashboard-module[data-dashboard-module="comparison"] {
+        grid-area: auto;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page { width: 100%; margin: 0; }
+      .hero { padding: 22px 18px 18px; }
+      h1 { font-size: 26px; }
+      .card-body, .card-header { padding-left: 14px; padding-right: 14px; }
+      .page-nav { padding-left: 14px; padding-right: 14px; }
+      .main-review,
+      .dashboard-shell { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">离线工具 · 训练质检与效果评估</div>
+        <h1>to-p模型美妆数据看板</h1>
+      </div>
+    </section>
+
+    <nav class="page-nav" aria-label="功能页面切换">
+      <button class="page-tab active" data-page-target="table" aria-pressed="true">模型迭代数据视窗</button>
+      <button class="page-tab" data-page-target="dashboard" aria-pressed="false">可视化看板</button>
+    </nav>
+
+    <section class="main-review page-panel" data-page="table">
+      <div class="card">
+        <div class="card-header">
+          <div class="table-actions">
+            <div>
+              <h2 class="card-title">模型版本评估表</h2>
+            </div>
+            <div class="module-toolbar" id="tableActions">
+              <input id="iterationImportInput" class="file-input" type="file" accept=".xlsx" />
+              <button class="btn btn-primary" id="openImportBtn">自动处理评估数据</button>
+              <button class="btn btn-soft" id="addManualRecordBtn">新增空记录</button>
+              <button class="btn btn-soft" id="importIterationBtn">导入迭代记录表</button>
+              <button class="btn btn-soft" id="exportIterationBtn">导出迭代记录表</button>
+              <button class="btn btn-ghost" id="resetAllBtn">重置全部</button>
+            </div>
+          </div>
+        </div>
+        <div class="card-body stack-sm">
+          <div class="review-grid" id="reviewSummary"></div>
+          <div class="table-actions">
+            <span class="hint" id="tableStatus"></span>
+          </div>
+          <div class="table-wrap review-table-wrap">
+            <table class="review-table">
+              <thead id="reviewTableHead"></thead>
+              <tbody id="reviewTableBody"><tr><td><div class="review-empty">暂无记录，可点击“新增空记录”或导入迭代记录表。</div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="dashboard-shell page-panel" data-page="dashboard" hidden>
+      <div class="dashboard-titlebar">
+        <div>
+          <h2>可视化看板</h2>
+        </div>
+      </div>
+      <div class="dashboard-grid" id="dashboardGrid">
+        <section class="dashboard-module metric-module" data-dashboard-module="total" data-size="small">
+          <div class="dashboard-module-head">
+            <h3 class="dashboard-module-title">当前记录数</h3>
+            <button class="module-expand-btn" data-expand-dashboard="total" title="放大查看">↗</button>
+          </div>
+          <div class="metric-body">
+            <div>
+              <p class="metric-label">记录总数</p>
+              <div class="metric-value" id="dashboardRecordTotal">0</div>
+              <div class="metric-sub">模型迭代记录</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="dashboard-module" data-dashboard-module="latest" data-size="small">
+          <div class="dashboard-module-head">
+            <h3 class="dashboard-module-title">最新版本摘要</h3>
+            <button class="module-expand-btn" data-expand-dashboard="latest" title="放大查看">↗</button>
+          </div>
+          <div class="summary-list" id="dashboardLatestSummary"></div>
+        </section>
+
+        <section class="dashboard-module dashboard-module-wide" data-dashboard-module="trend" data-size="medium">
+          <div class="dashboard-module-head">
+            <div>
+              <h3 class="dashboard-module-title">评估维度趋势折线图</h3>
+            </div>
+            <div class="dashboard-controls">
+              <div class="field-menu-wrap">
+                <button class="icon-btn" id="dimensionMenuBtn" title="编辑显示字段" aria-expanded="false">☰</button>
+                <div class="field-menu" id="dimensionMenu" hidden></div>
+              </div>
+              <div class="field-menu-wrap">
+                <button class="icon-btn" id="modelMenuBtn" title="选择显示模型" aria-expanded="false">▦</button>
+                <div class="field-menu model-menu" id="modelMenu" hidden></div>
+              </div>
+              <button class="module-expand-btn" data-expand-dashboard="trend" title="放大查看">↗</button>
+            </div>
+          </div>
+          <div class="trend-chart-wrap">
+            <div class="chart-scroll">
+              <svg class="trend-chart" id="trendChart" role="img" aria-label="评估维度趋势折线图"></svg>
+            </div>
+            <div class="chart-legend" id="trendLegend"></div>
+          </div>
+          <div class="chart-tooltip" id="chartTooltip" hidden></div>
+        </section>
+
+        <section class="dashboard-module dashboard-module-wide" data-dashboard-module="comparison" data-size="wide">
+          <div class="dashboard-module-head">
+            <div>
+              <h3 class="dashboard-module-title">版本对比看板</h3>
+            </div>
+            <button class="module-expand-btn" data-expand-dashboard="comparison" title="放大查看">↗</button>
+          </div>
+          <div class="comparison-wrap" id="versionComparison"></div>
+        </section>
+      </div>
+    </section>
+
+    <div class="modal-backdrop dashboard-view-modal" id="dashboardViewModal" aria-hidden="true">
+      <div class="modal-panel dashboard-view-panel" role="dialog" aria-modal="true" aria-labelledby="dashboardViewTitle">
+        <div class="modal-header">
+          <h2 class="modal-title" id="dashboardViewTitle">看板详情</h2>
+          <button class="btn btn-ghost" id="closeDashboardViewBtn">关闭</button>
+        </div>
+        <div class="dashboard-view-body">
+          <div class="dashboard-view-stage" id="dashboardViewStage"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="importModal" aria-hidden="true">
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="importModalTitle">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title" id="importModalTitle">评估数据处理</h2>
+          </div>
+          <button class="btn btn-ghost" id="closeImportBtn">关闭</button>
+        </div>
+        <div class="modal-body modal-grid">
+          <aside class="stack">
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title">1. 上传 Excel</h2>
+              </div>
+              <div class="card-body stack-sm">
+                <div class="upload-box">
+                  <div class="file-row">
+                    <input id="fileInput" class="file-input" type="file" accept=".xlsx" />
+                    <button class="btn btn-soft" id="chooseFileBtn">选择文件</button>
+                    <span class="hint" id="fileName">未选择文件</span>
+                  </div>
+                </div>
+                <div id="status" class="status info"></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title">2. 基础信息</h2>
+              </div>
+              <div class="card-body stack-sm" id="manualFields"></div>
+            </div>
+          </aside>
+
+          <section class="main-col">
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title">3. 计算结果预览</h2>
+              </div>
+              <div class="card-body stack-sm">
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>得分字段</th><th>可用数</th><th>有效总数</th><th>异常值</th><th>可用率</th></tr></thead>
+                    <tbody id="resultBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title">4. 加入迭代记录</h2>
+              </div>
+              <div class="card-body stack-sm">
+                <textarea id="copyText" readonly placeholder="上传 Excel 并完成自动识别后，这里会生成可复制的一行数据"></textarea>
+                <div class="file-row">
+                  <button class="btn btn-primary" id="importCurrentBtn">加入迭代记录</button>
+                  <button class="btn btn-ghost" id="recalculateBtn">重新计算</button>
+                  <button class="btn btn-ghost" id="copyBtn">复制结果</button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const FieldConfig = (() => {
+      const fields = [
+        { key: 'model_eval_name', name: '模型评估名称', type: 'text', source: 'manual', placeholder: '例如：R2V 模型 A 评估' },
+        { key: 'eval_date', name: '日期', type: 'date', source: 'manual', placeholder: '' },
+        { key: 'final_score_availability', name: '可用率【最终得分】', type: 'percent', source: 'calculated', aliases: ['最终得分', '总分', 'final score', 'overall score'] },
+        { key: 'basic_quality', name: '基础质量', type: 'percent', source: 'calculated', aliases: ['基础质量', '基础', 'basic quality'] },
+        { key: 'visual_content', name: '视觉内容', type: 'percent', source: 'calculated', aliases: ['视觉内容', '视觉', '画面内容', 'visual content'] },
+        { key: 'audio_quality', name: '音频质量', type: 'percent', source: 'calculated', aliases: ['音频质量', '音频', '声音质量', 'audio quality'] },
+        { key: 'prompt_following', name: 'Prompt 遵循', type: 'percent', source: 'calculated', aliases: ['prompt 遵循', 'prompt遵循', '指令遵循', '提示词遵循', 'prompt following'] },
+        { key: 'physical_logic', name: '物理逻辑', type: 'percent', source: 'calculated', aliases: ['物理逻辑', '物理', '逻辑', 'physical logic'] },
+        { key: 'product_consistency', name: '商品一致性', type: 'percent', source: 'calculated', aliases: ['商品一致性', '商品', '产品一致性', 'product consistency'] },
+        { key: 'portrait_consistency', name: '人像一致性', type: 'percent', source: 'calculated', aliases: ['人像一致性', '人像', '人物一致性', 'portrait consistency'] },
+        { key: 'makeup_texture', name: '美妆·质地还原', type: 'percent', source: 'calculated', aliases: ['美妆质地还原', '质地还原', '质地', 'makeup texture'] },
+        { key: 'makeup_color', name: '美妆·颜色准确', type: 'percent', source: 'calculated', aliases: ['美妆颜色准确', '颜色准确', '颜色', 'makeup color'] },
+        { key: 'audio_visual_score', name: '音画一致-得分', type: 'percent', source: 'calculated', aliases: ['音画一致', '音画一致得分', '音画', 'audio visual'] },
+        { key: 'lip_sync_score', name: '唇形同步-得分', type: 'percent', source: 'calculated', aliases: ['唇形同步', '唇形同步得分', '口型同步', 'lip sync'] },
+        { key: 'model_eval_report', name: '模型评估报告', type: 'text', source: 'manual', placeholder: '可填写报告链接或留空' },
+        { key: 'model_eval_link', name: '模型评估链接', type: 'url', source: 'manual', placeholder: '可填写评估相关链接' },
+        { key: 'training_data_link', name: '训练数据链接', type: 'url', source: 'manual', placeholder: '可填写训练数据链接' }
+      ];
+      return {
+        manual: () => fields.filter(field => field.source === 'manual'),
+        legacyCalculated: () => fields.filter(field => field.source === 'calculated')
+      };
+    })();
+
+    const MetricFieldFactory = (() => {
+      const displayName = header => String(header || '')
+        .replace(/^[\s_]*质检[\s_]*/i, '')
+        .replace(/[\s_\-:：]+(?:得分|分数|score|rating)$/i, '')
+        .trim();
+
+      const normalizeName = value => displayName(value)
+        .toLowerCase()
+        .replace(/【.*?】/g, match => match.slice(1, -1))
+        .replace(/^可用率/, '')
+        .replace(/(?:得分|分数|score|rating)$/i, '')
+        .replace(/[·_\-\s/\\()[\]{}:：|]+/g, '')
+        .replace(/[^\u4e00-\u9fa5a-z0-9]/g, '');
+
+      const keyFromName = name => `metric:${normalizeName(name)}`;
+      const fromHeader = header => {
+        const name = displayName(header);
+        return { key: keyFromName(name), name, type: 'percent', source: 'calculated' };
+      };
+      const normalizeField = field => ({
+        key: field?.key || keyFromName(field?.name || ''),
+        name: String(field?.name || '').trim(),
+        type: 'percent',
+        source: 'calculated'
+      });
+      return { displayName, normalizeName, keyFromName, fromHeader, normalizeField };
+    })();
+
+    const StorageService = (() => {
+      const key = 'model_eval_availability_mapping_v1';
+      const defaultState = () => ({
+        version: 4,
+        metricFields: [],
+        manualValues: {},
+        columnWidths: {},
+        dashboardFields: {},
+        dashboardModels: {},
+        review: { records: [] }
+      });
+      const normalize = saved => {
+        const fallback = defaultState();
+        return {
+          ...fallback,
+          ...(saved || {}),
+          version: 4,
+          review: {
+            ...fallback.review,
+            ...((saved || {}).review || {})
+          }
+        };
+      };
+      const load = () => {
+        try { return normalize(JSON.parse(localStorage.getItem(key))); }
+        catch { return defaultState(); }
+      };
+      const save = data => localStorage.setItem(key, JSON.stringify(normalize(data)));
+      const clear = () => localStorage.removeItem(key);
+      return { load, save, clear, normalize };
+    })();
+
+    const CloudStorageService = (() => {
+      const endpoint = '/api/records';
+      const isAvailable = () => ['http:', 'https:'].includes(window.location.protocol);
+      const load = async () => {
+        if (!isAvailable()) return null;
+        const response = await fetch(endpoint, { cache: 'no-store' });
+        if (!response.ok) throw new Error('云端数据读取失败');
+        const latest = await response.json();
+        return latest?.version ? latest : null;
+      };
+      const save = async (state, baseVersion) => {
+        if (!isAvailable()) return false;
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ state, baseVersion: Number(baseVersion) || 0 })
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          const error = new Error(payload?.message || '云端数据保存失败');
+          error.code = payload?.code || '';
+          error.isConflict = response.status === 409 || error.code === 'VERSION_CONFLICT';
+          throw error;
+        }
+        const saved = await response.json();
+        if (!saved) throw new Error('云端未返回保存结果');
+        return saved;
+      };
+      return { isAvailable, load, save };
+    })();
+
+    class ZipReader {
+      constructor(buffer) {
+        this.buffer = buffer;
+        this.view = new DataView(buffer);
+        this.files = new Map();
+      }
+
+      async init() {
+        const eocdOffset = this.findEndOfCentralDirectory();
+        if (eocdOffset < 0) throw new Error('未找到 xlsx 中央目录');
+        const totalEntries = this.view.getUint16(eocdOffset + 10, true);
+        const centralOffset = this.view.getUint32(eocdOffset + 16, true);
+        let offset = centralOffset;
+        for (let index = 0; index < totalEntries; index += 1) {
+          if (this.view.getUint32(offset, true) !== 0x02014b50) throw new Error('xlsx 中央目录格式异常');
+          const method = this.view.getUint16(offset + 10, true);
+          const compressedSize = this.view.getUint32(offset + 20, true);
+          const uncompressedSize = this.view.getUint32(offset + 24, true);
+          const fileNameLength = this.view.getUint16(offset + 28, true);
+          const extraLength = this.view.getUint16(offset + 30, true);
+          const commentLength = this.view.getUint16(offset + 32, true);
+          const localOffset = this.view.getUint32(offset + 42, true);
+          const name = this.decodeBytes(offset + 46, fileNameLength);
+          this.files.set(name, { method, compressedSize, uncompressedSize, localOffset });
+          offset += 46 + fileNameLength + extraLength + commentLength;
+        }
+      }
+
+      findEndOfCentralDirectory() {
+        const min = Math.max(0, this.view.byteLength - 65557);
+        for (let offset = this.view.byteLength - 22; offset >= min; offset -= 1) {
+          if (this.view.getUint32(offset, true) === 0x06054b50) return offset;
+        }
+        return -1;
+      }
+
+      decodeBytes(offset, length) {
+        return new TextDecoder('utf-8').decode(new Uint8Array(this.buffer, offset, length));
+      }
+
+      async text(name) {
+        const bytes = await this.bytes(name);
+        return new TextDecoder('utf-8').decode(bytes);
+      }
+
+      async bytes(name) {
+        const entry = this.files.get(name);
+        if (!entry) throw new Error(`xlsx 缺少文件：${name}`);
+        const local = entry.localOffset;
+        if (this.view.getUint32(local, true) !== 0x04034b50) throw new Error('xlsx 本地文件头格式异常');
+        const fileNameLength = this.view.getUint16(local + 26, true);
+        const extraLength = this.view.getUint16(local + 28, true);
+        const dataOffset = local + 30 + fileNameLength + extraLength;
+        const compressed = new Uint8Array(this.buffer, dataOffset, entry.compressedSize);
+        if (entry.method === 0) return compressed;
+        if (entry.method !== 8) throw new Error(`不支持的 xlsx 压缩方式：${entry.method}`);
+        if (!('DecompressionStream' in window)) throw new Error('当前浏览器不支持本地解压，请使用新版 Chrome/Edge');
+        const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+        return new Uint8Array(await new Response(stream).arrayBuffer());
+      }
+    }
+
+    class LightweightXlsxParser {
+      async parse(file) {
+        const buffer = await file.arrayBuffer();
+        const zip = new ZipReader(buffer);
+        await zip.init();
+        const workbookDoc = this.parseXml(await zip.text('xl/workbook.xml'));
+        const relsDoc = this.parseXml(await zip.text('xl/_rels/workbook.xml.rels'));
+        const sharedStrings = await this.readSharedStrings(zip);
+        const sheets = this.readWorkbookSheets(workbookDoc, relsDoc);
+        const parsedSheets = [];
+        for (const sheetMeta of sheets) {
+          const xml = await zip.text(`xl/${sheetMeta.path}`);
+          parsedSheets.push(this.parseSheet(sheetMeta.name, xml, sharedStrings));
+        }
+        return { fileName: file.name, sheets: parsedSheets };
+      }
+
+      parseXml(xml) {
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        if (doc.querySelector('parsererror')) throw new Error('xlsx XML 解析失败');
+        return doc;
+      }
+
+      async readSharedStrings(zip) {
+        if (!zip.files.has('xl/sharedStrings.xml')) return [];
+        const doc = this.parseXml(await zip.text('xl/sharedStrings.xml'));
+        return Array.from(doc.getElementsByTagName('si')).map(item => {
+          const textNodes = Array.from(item.getElementsByTagName('t'));
+          return textNodes.map(node => node.textContent || '').join('');
+        });
+      }
+
+      readWorkbookSheets(workbookDoc, relsDoc) {
+        const rels = new Map(Array.from(relsDoc.getElementsByTagName('Relationship')).map(rel => [rel.getAttribute('Id'), rel.getAttribute('Target')]));
+        return Array.from(workbookDoc.getElementsByTagName('sheet')).map(sheet => {
+          const relId = sheet.getAttribute('r:id') || sheet.getAttribute('id');
+          const target = rels.get(relId);
+          if (!target) throw new Error(`未找到 sheet 关系：${sheet.getAttribute('name')}`);
+          return { name: sheet.getAttribute('name') || 'Sheet', path: target.replace(/^\//, '').replace(/^xl\//, '') };
+        });
+      }
+
+      parseSheet(name, xml, sharedStrings) {
+        const doc = this.parseXml(xml);
+        const rowNodes = Array.from(doc.getElementsByTagName('row'));
+        const matrix = [];
+        for (const rowNode of rowNodes) {
+          const rowIndex = Number(rowNode.getAttribute('r') || matrix.length + 1) - 1;
+          matrix[rowIndex] = matrix[rowIndex] || [];
+          for (const cell of Array.from(rowNode.getElementsByTagName('c'))) {
+            const ref = cell.getAttribute('r') || '';
+            const columnIndex = this.columnNameToIndex(ref.replace(/[0-9]/g, ''));
+            matrix[rowIndex][columnIndex] = this.readCellValue(cell, sharedStrings);
+          }
+        }
+        const firstNonEmptyIndex = matrix.findIndex(row => row && row.some(value => this.normalize(value) !== ''));
+        if (firstNonEmptyIndex < 0) return { name, headers: [], rows: [] };
+        const headers = this.normalizeHeaders(matrix[firstNonEmptyIndex]);
+        const rows = matrix.slice(firstNonEmptyIndex + 1).map(row => {
+          const record = {};
+          headers.forEach((header, index) => { record[header] = row ? row[index] ?? '' : ''; });
+          return record;
+        }).filter(record => headers.some(header => this.normalize(record[header]) !== ''));
+        return { name, headers, rows };
+      }
+
+      readCellValue(cell, sharedStrings) {
+        const type = cell.getAttribute('t');
+        if (type === 'inlineStr') {
+          return Array.from(cell.getElementsByTagName('t')).map(node => node.textContent || '').join('');
+        }
+        const valueNode = cell.getElementsByTagName('v')[0];
+        const raw = valueNode ? valueNode.textContent || '' : '';
+        if (type === 's') return sharedStrings[Number(raw)] ?? '';
+        if (type === 'b') return raw === '1' ? 'TRUE' : 'FALSE';
+        return raw;
+      }
+
+      columnNameToIndex(name) {
+        let index = 0;
+        for (const char of name) index = index * 26 + char.charCodeAt(0) - 64;
+        return Math.max(0, index - 1);
+      }
+
+      normalize(value) { return value === null || value === undefined ? '' : String(value).trim(); }
+
+      normalizeHeaders(row = []) {
+        const seen = new Map();
+        return row.map((value, index) => {
+          const base = this.normalize(value) || `未命名列_${index + 1}`;
+          const count = (seen.get(base) || 0) + 1;
+          seen.set(base, count);
+          return count === 1 ? base : `${base}_${count}`;
+        });
+      }
+    }
+
+    class LocalExcelLoader {
+      constructor() { this.parser = new LightweightXlsxParser(); }
+      async load(file) {
+        if (!file) throw new Error('请先上传本地 Excel 文件');
+        const lowerName = file.name.toLowerCase();
+        if (lowerName.endsWith('.xls') && !lowerName.endsWith('.xlsx')) throw new Error('当前单文件离线版不解析旧版 .xls，请先另存为 .xlsx 后上传');
+        if (!lowerName.endsWith('.xlsx')) throw new Error('仅支持 .xlsx 文件');
+        return this.parser.parse(file);
+      }
+    }
+
+    class IterationTableWorkbook {
+      constructor() { this.parser = new LightweightXlsxParser(); }
+
+      async import(file) {
+        if (!file) throw new Error('请选择迭代记录表 Excel');
+        const lowerName = file.name.toLowerCase();
+        if (!lowerName.endsWith('.xlsx')) throw new Error('迭代记录表仅支持 .xlsx 文件');
+        const workbook = await this.parser.parse(file);
+        const sheet = workbook.sheets[0];
+        if (!sheet) throw new Error('迭代记录表为空');
+        const { fields, metricFields } = this.fieldsFromHeaders(sheet.headers);
+        const records = sheet.rows.map((row, index) => this.rowToRecord(row, index, fields)).filter(record => this.hasContent(record.data));
+        return { records, metricFields };
+      }
+
+      export(records, metricFields) {
+        const fields = [...FieldConfig.manual(), ...(metricFields || [])];
+        const headers = this.headers(metricFields);
+        const rows = records.map(record => [
+          this.formatExportTime(record.createdAt),
+          ...fields.map(field => record.data?.[field.key] || '')
+        ]);
+        const sheetXml = this.sheetXml([headers, ...rows]);
+        const files = {
+          '[Content_Types].xml': this.contentTypesXml(),
+          '_rels/.rels': this.rootRelsXml(),
+          'xl/workbook.xml': this.workbookXml(),
+          'xl/_rels/workbook.xml.rels': this.workbookRelsXml(),
+          'xl/worksheets/sheet1.xml': sheetXml
+        };
+        const blob = new Blob([this.zip(files)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const fileName = `模型迭代记录表_${this.dateStamp()}.xlsx`;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 0);
+        return fileName;
+      }
+
+      headers(metricFields = []) {
+        return ['记录时间', ...FieldConfig.manual().map(field => field.name), ...metricFields.map(field => field.name)];
+      }
+
+      fieldsFromHeaders(headers) {
+        const manualFields = FieldConfig.manual();
+        const manualByName = new Map(manualFields.map(field => [field.name, field]));
+        manualByName.set('年月日', manualFields.find(field => field.key === 'eval_date'));
+        const metricByKey = new Map();
+        const fieldByHeader = [];
+        for (const header of headers || []) {
+          if (header === '记录时间') continue;
+          const manualField = manualByName.get(header);
+          if (manualField) {
+            fieldByHeader.push({ header, field: manualField });
+            continue;
+          }
+          const metricField = MetricFieldFactory.fromHeader(header);
+          if (!metricField.name || !MetricFieldFactory.normalizeName(metricField.name)) continue;
+          if (!metricByKey.has(metricField.key)) metricByKey.set(metricField.key, metricField);
+          fieldByHeader.push({ header, field: metricByKey.get(metricField.key) });
+        }
+        return { fields: fieldByHeader, metricFields: Array.from(metricByKey.values()) };
+      }
+
+      rowToRecord(row, index, fields) {
+        const data = {};
+        fields.forEach(({ header, field }) => {
+          data[field.key] = this.clean(row[header]);
+        });
+        return {
+          id: `record_${Date.now()}_${index}`,
+          createdAt: this.parseImportedTime(row['记录时间']) || new Date().toISOString(),
+          sourceText: '',
+          data
+        };
+      }
+
+      hasContent(data) {
+        return Object.values(data || {}).some(value => this.clean(value));
+      }
+
+      clean(value) {
+        return String(value ?? '').replace(/[\r\n\t]+/g, ' ').trim();
+      }
+
+      parseImportedTime(value) {
+        const text = this.clean(value);
+        if (!text) return '';
+        if (/^\d+(\.\d+)?$/.test(text)) {
+          const date = new Date((Number(text) - 25569) * 86400 * 1000);
+          if (!Number.isNaN(date.getTime())) return date.toISOString();
+        }
+        const normalized = text.replace(/\//g, '-');
+        const date = new Date(normalized);
+        return Number.isNaN(date.getTime()) ? text : date.toISOString();
+      }
+
+      formatExportTime(value) {
+        if (!value) return '';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        const pad = number => String(number).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      }
+
+      dateStamp() {
+        const date = new Date();
+        const pad = number => String(number).padStart(2, '0');
+        return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}`;
+      }
+
+      sheetXml(rows) {
+        return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+          `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
+          `<sheetData>${rows.map((row, rowIndex) => `<row r="${rowIndex + 1}">${row.map((value, columnIndex) => this.cellXml(rowIndex + 1, columnIndex, value)).join('')}</row>`).join('')}</sheetData>` +
+          `</worksheet>`;
+      }
+
+      cellXml(rowIndex, columnIndex, value) {
+        const ref = `${this.columnName(columnIndex)}${rowIndex}`;
+        return `<c r="${ref}" t="inlineStr"><is><t>${this.xmlEscape(value)}</t></is></c>`;
+      }
+
+      columnName(index) {
+        let name = '';
+        let value = index + 1;
+        while (value > 0) {
+          const remainder = (value - 1) % 26;
+          name = String.fromCharCode(65 + remainder) + name;
+          value = Math.floor((value - 1) / 26);
+        }
+        return name;
+      }
+
+      contentTypesXml() {
+        return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`;
+      }
+
+      rootRelsXml() {
+        return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+      }
+
+      workbookXml() {
+        return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="模型迭代记录表" sheetId="1" r:id="rId1"/></sheets></workbook>`;
+      }
+
+      workbookRelsXml() {
+        return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`;
+      }
+
+      zip(files) {
+        const encoder = new TextEncoder();
+        const entries = Object.entries(files).map(([name, text]) => ({ name, bytes: encoder.encode(text) }));
+        let offset = 0;
+        const localParts = [];
+        const centralParts = [];
+        for (const entry of entries) {
+          const nameBytes = encoder.encode(entry.name);
+          const crc = this.crc32(entry.bytes);
+          const local = this.concat(
+            this.u32(0x04034b50), this.u16(20), this.u16(0), this.u16(0), this.u16(0), this.u16(0),
+            this.u32(crc), this.u32(entry.bytes.length), this.u32(entry.bytes.length), this.u16(nameBytes.length), this.u16(0),
+            nameBytes, entry.bytes
+          );
+          const central = this.concat(
+            this.u32(0x02014b50), this.u16(20), this.u16(20), this.u16(0), this.u16(0), this.u16(0), this.u16(0),
+            this.u32(crc), this.u32(entry.bytes.length), this.u32(entry.bytes.length), this.u16(nameBytes.length), this.u16(0), this.u16(0),
+            this.u16(0), this.u16(0), this.u32(0), this.u32(offset), nameBytes
+          );
+          localParts.push(local);
+          centralParts.push(central);
+          offset += local.length;
+        }
+        const centralOffset = offset;
+        const central = this.concat(...centralParts);
+        const end = this.concat(
+          this.u32(0x06054b50), this.u16(0), this.u16(0), this.u16(entries.length), this.u16(entries.length),
+          this.u32(central.length), this.u32(centralOffset), this.u16(0)
+        );
+        return this.concat(...localParts, central, end);
+      }
+
+      crc32(bytes) {
+        let crc = -1;
+        for (const byte of bytes) {
+          crc ^= byte;
+          for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+        }
+        return (crc ^ -1) >>> 0;
+      }
+
+      u16(value) {
+        const bytes = new Uint8Array(2);
+        new DataView(bytes.buffer).setUint16(0, value, true);
+        return bytes;
+      }
+
+      u32(value) {
+        const bytes = new Uint8Array(4);
+        new DataView(bytes.buffer).setUint32(0, value >>> 0, true);
+        return bytes;
+      }
+
+      concat(...parts) {
+        const total = parts.reduce((sum, part) => sum + part.length, 0);
+        const output = new Uint8Array(total);
+        let offset = 0;
+        for (const part of parts) {
+          output.set(part, offset);
+          offset += part.length;
+        }
+        return output;
+      }
+
+      xmlEscape(value) {
+        return String(value ?? '').replace(/[<>&'"]/g, char => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[char]));
+      }
+    }
+
+    class AutoColumnDetector {
+      detect(workbook) {
+        const mappings = {};
+        const fieldByKey = new Map();
+        const ignoredQualityColumns = [];
+
+        for (const sheet of workbook?.sheets || []) {
+          for (const header of sheet.headers || []) {
+            if (!String(header || '').includes('质检')) continue;
+            if (!this.isQualityColumn(header)) {
+              ignoredQualityColumns.push({ sheetName: sheet.name, columnName: header });
+              continue;
+            }
+            const values = sheet.rows.map(row => row[header]);
+            if (!this.hasScoreData(values)) {
+              ignoredQualityColumns.push({ sheetName: sheet.name, columnName: header });
+              continue;
+            }
+            const field = MetricFieldFactory.fromHeader(header);
+            if (!field.name || !MetricFieldFactory.normalizeName(field.name)) continue;
+            if (!fieldByKey.has(field.key)) fieldByKey.set(field.key, field);
+            if (!mappings[field.key]) mappings[field.key] = [];
+            mappings[field.key].push({ sheetName: sheet.name, columnName: header });
+          }
+        }
+
+        const fields = Array.from(fieldByKey.values());
+        const matchedColumnCount = Object.values(mappings).reduce((sum, refs) => sum + refs.length, 0);
+        return {
+          fields,
+          mappings,
+          matchedFieldCount: fields.length,
+          matchedColumnCount,
+          sheetCount: workbook?.sheets?.length || 0,
+          ignoredQualityColumns
+        };
+      }
+
+      isQualityColumn(header) {
+        const text = String(header || '');
+        if (!text.includes('质检')) return false;
+        return !/(质检状态|标签|备注|质检合成检查)$/i.test(text);
+      }
+
+      hasScoreData(values) {
+        return values.some(value => {
+          const normalized = value === null || value === undefined ? '' : String(value).trim();
+          return normalized === '0' || normalized === '1' || normalized === '2';
+        });
+      }
+    }
+
+    class AvailabilityCalculator {
+      calculate(workbook, mappings, fields) {
+        const results = {};
+        for (const field of fields || []) {
+          const refs = mappings[field.key] || [];
+          const values = refs.flatMap(ref => this.getColumnValues(workbook, ref.sheetName, ref.columnName));
+          results[field.key] = this.calculateValues(values);
+        }
+        return results;
+      }
+      getColumnValues(workbook, sheetName, columnName) {
+        const sheet = workbook?.sheets?.find(item => item.name === sheetName);
+        if (!sheet) return [];
+        return sheet.rows.map(row => row[columnName]);
+      }
+      calculateValues(values) {
+        let usableCount = 0;
+        let totalCount = 0;
+        let invalidCount = 0;
+        for (const value of values) {
+          const normalized = value === null || value === undefined ? '' : String(value).trim();
+          if (!normalized) continue;
+          if (normalized === '0' || normalized === '1' || normalized === '2') {
+            totalCount += 1;
+            if (normalized === '1' || normalized === '2') usableCount += 1;
+          } else {
+            invalidCount += 1;
+          }
+        }
+        return {
+          usableCount,
+          totalCount,
+          invalidCount,
+          value: totalCount ? `${((usableCount / totalCount) * 100).toFixed(2)}%` : ''
+        };
+      }
+    }
+
+    class CopyRowGenerator {
+      generate(manualValues, results, fields) {
+        return fields.map(field => {
+          const value = field.source === 'manual' ? manualValues[field.key] || '' : results[field.key]?.value || '';
+          return String(value).replace(/[\t\r\n]+/g, ' ').trim();
+        }).join('\t');
+      }
+    }
+
+    class TabRowParser {
+      parse(text, fields) {
+        const values = String(text || '').split('\t');
+        return fields.reduce((record, field, index) => {
+          record[field.key] = String(values[index] || '').replace(/[\r\n]+/g, ' ').trim();
+          return record;
+        }, {});
+      }
+
+      countColumns(text) {
+        return String(text || '').trim() ? String(text || '').split('\t').length : 0;
+      }
+    }
+
+
+    class UIController {
+      constructor() {
+        this.loader = new LocalExcelLoader();
+        this.iterationWorkbook = new IterationTableWorkbook();
+        this.detector = new AutoColumnDetector();
+        this.calculator = new AvailabilityCalculator();
+        this.generator = new CopyRowGenerator();
+        this.rowParser = new TabRowParser();
+        const saved = StorageService.load();
+        this.detection = null;
+        this.manualValues = saved.manualValues || {};
+        this.columnWidths = saved.columnWidths || {};
+        this.chartColors = ['#3377ff', '#16a34a', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b', '#84cc16', '#f97316', '#14b8a6', '#6366f1'];
+        this.columnResize = null;
+        this.cloudSaveTimer = null;
+        this.cloudPollTimer = null;
+        this.cloudSaveInFlight = false;
+        this.cloudBlockedByConflict = false;
+        this.cloudVersion = 0;
+        this.localChangeSequence = 0;
+        this.lastCloudSavedSequence = 0;
+        this.records = (saved.review?.records || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        this.migrateLegacyRecords(this.records);
+        this.metricFields = this.resolveMetricFields(saved.metricFields || [], this.records);
+        this.dashboardFields = this.normalizeDashboardFields(saved.dashboardFields || {});
+        this.dashboardModels = saved.dashboardModels || {};
+        this.workbook = null;
+        this.bindElements();
+        this.bindEvents();
+        this.renderManualFields();
+        this.renderReviewTable();
+        this.renderDimensionMenu();
+        this.renderModelMenu();
+        this.renderDashboard();
+        this.recalculate();
+        this.loadCloudState().finally(() => this.startCloudPolling());
+      }
+
+      bindElements() {
+        this.el = {
+          openImportBtn: document.getElementById('openImportBtn'),
+          closeImportBtn: document.getElementById('closeImportBtn'),
+          importModal: document.getElementById('importModal'),
+          fileInput: document.getElementById('fileInput'),
+          chooseFileBtn: document.getElementById('chooseFileBtn'),
+          fileName: document.getElementById('fileName'),
+          status: document.getElementById('status'),
+          manualFields: document.getElementById('manualFields'),
+          resultBody: document.getElementById('resultBody'),
+          copyText: document.getElementById('copyText'),
+          copyBtn: document.getElementById('copyBtn'),
+          importCurrentBtn: document.getElementById('importCurrentBtn'),
+          reviewTableHead: document.getElementById('reviewTableHead'),
+          reviewTableBody: document.getElementById('reviewTableBody'),
+          recalculateBtn: document.getElementById('recalculateBtn'),
+          resetAllBtn: document.getElementById('resetAllBtn'),
+          reviewSummary: document.getElementById('reviewSummary'),
+          addManualRecordBtn: document.getElementById('addManualRecordBtn'),
+          importIterationBtn: document.getElementById('importIterationBtn'),
+          exportIterationBtn: document.getElementById('exportIterationBtn'),
+          iterationImportInput: document.getElementById('iterationImportInput'),
+          tableStatus: document.getElementById('tableStatus'),
+          dimensionMenuBtn: document.getElementById('dimensionMenuBtn'),
+          dimensionMenu: document.getElementById('dimensionMenu'),
+          modelMenuBtn: document.getElementById('modelMenuBtn'),
+          modelMenu: document.getElementById('modelMenu'),
+          dashboardRecordTotal: document.getElementById('dashboardRecordTotal'),
+          dashboardLatestSummary: document.getElementById('dashboardLatestSummary'),
+          versionComparison: document.getElementById('versionComparison'),
+          trendChart: document.getElementById('trendChart'),
+          trendLegend: document.getElementById('trendLegend'),
+          chartTooltip: document.getElementById('chartTooltip'),
+          dashboardViewModal: document.getElementById('dashboardViewModal'),
+          dashboardViewTitle: document.getElementById('dashboardViewTitle'),
+          dashboardViewStage: document.getElementById('dashboardViewStage'),
+          closeDashboardViewBtn: document.getElementById('closeDashboardViewBtn'),
+          dashboardExpandBtns: Array.from(document.querySelectorAll('[data-expand-dashboard]')),
+          pageTabs: Array.from(document.querySelectorAll('[data-page-target]')),
+          pagePanels: Array.from(document.querySelectorAll('[data-page]'))
+        };
+      }
+
+      bindEvents() {
+        this.el.openImportBtn.addEventListener('click', () => this.openImportModal());
+        this.el.closeImportBtn.addEventListener('click', () => this.closeImportModal());
+        this.el.importModal.addEventListener('click', event => {
+          if (event.target === this.el.importModal) this.closeImportModal();
+        });
+        this.el.chooseFileBtn.addEventListener('click', () => this.el.fileInput.click());
+        this.el.fileInput.addEventListener('change', event => this.handleFile(event.target.files[0]));
+        this.el.recalculateBtn.addEventListener('click', () => this.recalculate(true));
+        this.el.copyBtn.addEventListener('click', () => this.copyResult());
+        this.el.importCurrentBtn.addEventListener('click', () => this.importCurrentResult());
+        this.el.resetAllBtn.addEventListener('click', () => this.resetAll());
+        this.el.addManualRecordBtn.addEventListener('click', () => this.addManualRecord());
+        this.el.importIterationBtn.addEventListener('click', () => this.el.iterationImportInput.click());
+        this.el.iterationImportInput.addEventListener('change', event => this.importIterationWorkbook(event.target.files[0]));
+        this.el.exportIterationBtn.addEventListener('click', () => this.exportIterationWorkbook());
+        this.el.reviewTableBody.addEventListener('input', event => this.handleRecordInput(event));
+        this.el.reviewTableBody.addEventListener('paste', event => this.handleTablePaste(event));
+        this.el.reviewTableHead.addEventListener('pointerdown', event => this.startColumnResize(event));
+        this.el.pageTabs.forEach(tab => tab.addEventListener('click', () => this.switchPage(tab.dataset.pageTarget)));
+        this.el.dashboardExpandBtns.forEach(button => {
+          button.addEventListener('click', event => {
+            event.stopPropagation();
+            this.openDashboardView(button.dataset.expandDashboard);
+          });
+        });
+        this.el.closeDashboardViewBtn.addEventListener('click', () => this.closeDashboardView());
+        this.el.dashboardViewModal.addEventListener('click', event => {
+          if (event.target === this.el.dashboardViewModal) this.closeDashboardView();
+        });
+        this.el.dimensionMenuBtn.addEventListener('click', event => {
+          event.stopPropagation();
+          this.toggleDimensionMenu();
+        });
+        this.el.dimensionMenu.addEventListener('change', event => this.handleDimensionToggle(event));
+        this.el.modelMenuBtn.addEventListener('click', event => {
+          event.stopPropagation();
+          this.toggleModelMenu();
+        });
+        this.el.modelMenu.addEventListener('change', event => this.handleModelToggle(event));
+        document.addEventListener('click', event => {
+          if (!event.target.closest('.field-menu-wrap')) {
+            this.closeDimensionMenu();
+            this.closeModelMenu();
+          }
+        });
+        document.addEventListener('keydown', event => {
+          if (event.key !== 'Escape') return;
+          if (this.el.dashboardViewModal.classList.contains('show')) this.closeDashboardView();
+          else if (this.el.importModal.classList.contains('show')) this.closeImportModal();
+        });
+      }
+
+      switchPage(page) {
+        this.el.pagePanels.forEach(panel => {
+          panel.hidden = panel.dataset.page !== page;
+        });
+        this.el.pageTabs.forEach(tab => {
+          const isActive = tab.dataset.pageTarget === page;
+          tab.classList.toggle('active', isActive);
+          tab.setAttribute('aria-pressed', String(isActive));
+        });
+        if (page === 'dashboard') this.renderDashboard();
+      }
+
+      legacyMetricField(field) {
+        const name = field.key === 'final_score_availability'
+          ? '最终得分'
+          : MetricFieldFactory.displayName(field.name);
+        return { key: MetricFieldFactory.keyFromName(name), name, type: 'percent', source: 'calculated' };
+      }
+
+      migrateLegacyRecords(records) {
+        const legacyFields = FieldConfig.legacyCalculated();
+        records.forEach(record => {
+          record.data = record.data || {};
+          legacyFields.forEach(legacy => {
+            if (!(legacy.key in record.data)) return;
+            const dynamicField = this.legacyMetricField(legacy);
+            if (!(dynamicField.key in record.data)) record.data[dynamicField.key] = record.data[legacy.key];
+            delete record.data[legacy.key];
+          });
+        });
+      }
+
+      resolveMetricFields(savedFields, records) {
+        const byKey = new Map();
+        const add = field => {
+          const normalized = MetricFieldFactory.normalizeField(field);
+          if (!normalized.name || !normalized.key || byKey.has(normalized.key)) return;
+          byKey.set(normalized.key, normalized);
+        };
+        (savedFields || []).forEach(add);
+        FieldConfig.legacyCalculated().forEach(legacy => {
+          const field = this.legacyMetricField(legacy);
+          if (records.some(record => String(record.data?.[field.key] ?? '').trim())) add(field);
+        });
+        const recordKeys = new Set(records.flatMap(record => Object.keys(record.data || {})));
+        Array.from(recordKeys).filter(key => key.startsWith('metric:')).forEach(key => {
+          if (!byKey.has(key)) add({ key, name: key.slice(7) });
+        });
+        return Array.from(byKey.values());
+      }
+
+      mergeMetricFields(incomingFields) {
+        const known = new Set(this.metricFields.map(field => field.key));
+        let added = 0;
+        for (const field of incomingFields || []) {
+          if (known.has(field.key)) continue;
+          this.metricFields.push(MetricFieldFactory.normalizeField(field));
+          this.dashboardFields[field.key] = true;
+          known.add(field.key);
+          added += 1;
+        }
+        return added;
+      }
+
+      allFields() {
+        return [...FieldConfig.manual(), ...this.metricFields];
+      }
+
+      metricFieldByName(name) {
+        const normalized = MetricFieldFactory.normalizeName(name);
+        return this.metricFields.find(field => MetricFieldFactory.normalizeName(field.name) === normalized);
+      }
+
+      metricValue(record, name) {
+        const field = this.metricFieldByName(name);
+        return field ? record?.data?.[field.key] || '' : '';
+      }
+
+      latestMetricRows(record, limit = 2) {
+        const preferredNames = ['最终得分', '基础质量'];
+        const ordered = [];
+        preferredNames.forEach(name => {
+          const field = this.metricFieldByName(name);
+          if (field && !ordered.some(item => item.key === field.key)) ordered.push(field);
+        });
+        this.metricFields.forEach(field => {
+          if (!ordered.some(item => item.key === field.key)) ordered.push(field);
+        });
+        return ordered.slice(0, limit).map(field => [field.name, record?.data?.[field.key] || '-']);
+      }
+
+      normalizeDashboardFields(saved) {
+        return this.metricFields.reduce((fields, field) => {
+          fields[field.key] = saved[field.key] !== false;
+          return fields;
+        }, {});
+      }
+
+      renderDimensionMenu() {
+        if (!this.metricFields.length) {
+          this.el.dimensionMenu.innerHTML = '<div class="empty-text">暂无得分字段</div>';
+          return;
+        }
+        this.el.dimensionMenu.innerHTML = this.metricFields.map((field, index) => `
+          <label class="field-option">
+            <input type="checkbox" data-dashboard-field="${this.escape(field.key)}" ${this.dashboardFields[field.key] ? 'checked' : ''} />
+            <span class="legend-swatch" style="background:${this.chartColors[index % this.chartColors.length]}"></span>
+            <span>${this.escape(field.name)}</span>
+          </label>
+        `).join('');
+      }
+
+      toggleDimensionMenu() {
+        const nextHidden = !this.el.dimensionMenu.hidden;
+        this.el.dimensionMenu.hidden = nextHidden;
+        this.el.dimensionMenuBtn.setAttribute('aria-expanded', String(!nextHidden));
+      }
+
+      closeDimensionMenu() {
+        this.el.dimensionMenu.hidden = true;
+        this.el.dimensionMenuBtn.setAttribute('aria-expanded', 'false');
+      }
+
+      handleDimensionToggle(event) {
+        const input = event.target.closest('[data-dashboard-field]');
+        if (!input) return;
+        this.dashboardFields[input.dataset.dashboardField] = input.checked;
+        this.renderDashboard();
+        this.saveState();
+      }
+
+      renderModelMenu() {
+        const records = this.records.slice().sort((a, b) => {
+          const dateA = this.parseChartDate(a.data?.eval_date || a.createdAt)?.getTime() || 0;
+          const dateB = this.parseChartDate(b.data?.eval_date || b.createdAt)?.getTime() || 0;
+          return dateA - dateB;
+        });
+        if (!records.length) {
+          this.el.modelMenu.innerHTML = '<div class="empty-text">暂无模型记录</div>';
+          return;
+        }
+        this.el.modelMenu.innerHTML = records.map(record => {
+          const checked = this.dashboardModels[record.id] !== false;
+          const date = this.parseChartDate(record.data?.eval_date || record.createdAt);
+          const dateLabel = date ? this.formatChartDate(date) : '-';
+          const name = record.data?.model_eval_name || '未命名模型';
+          return `
+            <label class="field-option">
+              <input type="checkbox" data-dashboard-model="${this.escape(record.id)}" ${checked ? 'checked' : ''} />
+              <span class="model-option-text">
+                <strong>${this.escape(name)}</strong>
+                <span>${this.escape(dateLabel)}</span>
+              </span>
+            </label>
+          `;
+        }).join('');
+      }
+
+      toggleModelMenu() {
+        const nextHidden = !this.el.modelMenu.hidden;
+        this.el.modelMenu.hidden = nextHidden;
+        this.el.modelMenuBtn.setAttribute('aria-expanded', String(!nextHidden));
+      }
+
+      closeModelMenu() {
+        this.el.modelMenu.hidden = true;
+        this.el.modelMenuBtn.setAttribute('aria-expanded', 'false');
+      }
+
+      openDashboardView(moduleKey) {
+        const titles = {
+          total: '当前记录数',
+          trend: '评估维度趋势折线图',
+          latest: '最新版本摘要',
+          comparison: '版本对比看板'
+        };
+        this.el.dashboardViewTitle.textContent = titles[moduleKey] || '看板详情';
+        this.renderDashboardView(moduleKey);
+        this.el.dashboardViewModal.classList.add('show');
+        this.el.dashboardViewModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+      }
+
+      closeDashboardView() {
+        this.el.dashboardViewModal.classList.remove('show');
+        this.el.dashboardViewModal.setAttribute('aria-hidden', 'true');
+        this.el.dashboardViewStage.innerHTML = '';
+        if (!this.el.importModal.classList.contains('show')) document.body.classList.remove('modal-open');
+        this.hideChartTooltip();
+      }
+
+      renderDashboardView(moduleKey) {
+        if (moduleKey === 'total') {
+          this.el.dashboardViewStage.innerHTML = `
+            <div class="metric-body">
+              <div>
+                <p class="metric-label">记录总数</p>
+                <div class="metric-value">${this.records.length}</div>
+                <div class="metric-sub">模型迭代记录</div>
+              </div>
+            </div>
+          `;
+          return;
+        }
+        if (moduleKey === 'latest') {
+          const latestRecord = this.records[0];
+          const latest = latestRecord?.data || {};
+          const rows = [
+            ['最新模型', latest.model_eval_name || '-'],
+            ['日期', latest.eval_date || '-'],
+            ...this.latestMetricRows(latestRecord)
+          ];
+          this.el.dashboardViewStage.innerHTML = `
+            <div class="summary-list">
+              ${rows.map(([label, value]) => `
+                <div class="summary-row">
+                  <span>${this.escape(label)}</span>
+                  <strong>${this.escape(value)}</strong>
+                </div>
+              `).join('')}
+            </div>
+          `;
+          return;
+        }
+        if (moduleKey === 'trend') {
+          const fields = this.metricFields.filter(field => this.dashboardFields[field.key]);
+          const points = this.dashboardPoints();
+          if (!fields.length || !points.length || !points.some(point => fields.some(field => point.values[field.key] !== null))) {
+            this.el.dashboardViewStage.innerHTML = '<div class="comparison-empty">暂无数据</div>';
+            return;
+          }
+          const chart = this.buildTrendChart(fields, points, 'expanded');
+          this.el.dashboardViewStage.innerHTML = `
+            <div class="trend-chart-wrap">
+              <div class="chart-scroll">
+                <svg class="trend-chart" viewBox="0 0 ${chart.width} ${chart.height}" style="min-width:${chart.width}px" role="img" aria-label="评估维度趋势折线图">${chart.svg}</svg>
+              </div>
+              <div class="chart-legend">${this.trendLegendHtml(fields)}</div>
+            </div>
+          `;
+          this.bindChartTooltip(this.el.dashboardViewStage);
+          return;
+        }
+        if (moduleKey === 'comparison') {
+          const fields = this.metricFields;
+          const records = this.records.slice(0, 2);
+          if (!records.length || !fields.length) {
+            this.el.dashboardViewStage.innerHTML = '<div class="comparison-empty">暂无数据</div>';
+            return;
+          }
+          const chart = this.renderComparisonHistogram(records, fields, 'expanded');
+          this.el.dashboardViewStage.innerHTML = `
+            <div class="comparison-wrap">
+              <div class="comparison-chart-scroll">
+                <svg class="comparison-chart" viewBox="0 0 ${chart.width} ${chart.height}" style="min-width:${chart.width}px" role="img" aria-label="版本对比双列直方图">${chart.svg}</svg>
+              </div>
+              <div class="comparison-legend">${this.comparisonLegendHtml(records)}</div>
+            </div>
+          `;
+          this.bindComparisonTooltip(this.el.dashboardViewStage);
+        }
+      }
+
+      handleModelToggle(event) {
+        const input = event.target.closest('[data-dashboard-model]');
+        if (!input) return;
+        this.dashboardModels[input.dataset.dashboardModel] = input.checked;
+        this.renderDashboard();
+        this.saveState();
+      }
+
+      async handleFile(file) {
+        try {
+          this.showStatus('info', '正在本地解析 Excel...');
+          this.workbook = await this.loader.load(file);
+          this.el.fileName.textContent = file.name;
+          const addedFields = this.autoDetectColumns();
+          const detection = this.detection;
+          this.showStatus(
+            detection.matchedFieldCount ? 'success' : 'warn',
+            detection.matchedFieldCount
+              ? `处理完成：识别 ${detection.matchedFieldCount} 个得分字段${addedFields ? `，评估表新增 ${addedFields} 列` : ''}`
+              : '未发现包含有效 0/1/2 数据的质检得分列'
+          );
+        } catch (error) {
+          this.workbook = null;
+          this.detection = null;
+          this.recalculate();
+          this.showStatus('error', error.message || '文件解析失败');
+        }
+      }
+
+      renderManualFields() {
+        this.el.manualFields.innerHTML = FieldConfig.manual().map(field => `
+          <div>
+            <label for="manual_${field.key}">${this.escape(field.name)}</label>
+            <input id="manual_${field.key}" data-key="${field.key}" type="${field.type === 'url' ? 'url' : field.type === 'date' ? 'date' : 'text'}" placeholder="${this.escape(field.placeholder || '')}" value="${this.escape(this.manualValues[field.key] || '')}" />
+          </div>
+        `).join('');
+        this.el.manualFields.querySelectorAll('input').forEach(input => {
+          input.addEventListener('input', () => {
+            this.manualValues[input.dataset.key] = input.value;
+            this.recalculate();
+            this.saveState();
+          });
+        });
+      }
+
+      autoDetectColumns() {
+        if (!this.workbook) return 0;
+        this.detection = this.detector.detect(this.workbook);
+        const addedFields = this.mergeMetricFields(this.detection.fields);
+        this.renderReviewTable();
+        this.renderDimensionMenu();
+        this.renderDashboard();
+        this.recalculate();
+        return addedFields;
+      }
+
+      recalculate(showMessage = false) {
+        const currentFields = this.detection?.fields || [];
+        const mappings = this.detection?.mappings || {};
+        const results = this.calculator.calculate(this.workbook, mappings, currentFields);
+        this.currentResults = results;
+        this.el.resultBody.innerHTML = currentFields.length ? currentFields.map(field => {
+          const result = results[field.key] || { usableCount: 0, totalCount: 0, invalidCount: 0, value: '' };
+          return `<tr>
+            <td>${this.escape(field.name)}</td>
+            <td>${result.usableCount}</td>
+            <td>${result.totalCount}</td>
+            <td class="${result.invalidCount ? 'warn-text' : ''}">${result.invalidCount}</td>
+            <td class="percent">${result.value || '-'}</td>
+          </tr>`;
+        }).join('') : '<tr><td colspan="5"><span class="empty-text">上传评估 Excel 后自动生成计算结果</span></td></tr>';
+        this.el.copyText.value = this.generator.generate(this.manualValues, results, this.allFields());
+        if (showMessage) this.showStatus('success', '已重新计算');
+      }
+
+      async copyResult() {
+        const text = this.el.copyText.value;
+        if (!text.trim()) {
+          this.showStatus('warn', '暂无可复制内容，请先上传 Excel 并完成自动识别');
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(text);
+          this.showStatus('success', '已复制，可直接粘贴到目标多维表');
+        } catch {
+          this.el.copyText.focus();
+          this.el.copyText.select();
+          document.execCommand('copy');
+          this.showStatus('success', '已选中并尝试复制，如未成功请手动复制文本框内容');
+        }
+      }
+
+      openImportModal() {
+        this.el.importModal.classList.add('show');
+        this.el.importModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+      }
+
+      closeImportModal() {
+        this.el.importModal.classList.remove('show');
+        this.el.importModal.setAttribute('aria-hidden', 'true');
+        if (!this.el.dashboardViewModal.classList.contains('show')) document.body.classList.remove('modal-open');
+      }
+
+      importCurrentResult() {
+        const text = this.el.copyText.value;
+        if (!text.trim()) {
+          this.showStatus('warn', '暂无可导入内容，请先上传 Excel 并完成自动识别');
+          return;
+        }
+        const data = this.rowParser.parse(text, this.allFields());
+        const record = {
+          id: `record_${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          sourceText: text,
+          data
+        };
+        this.records.unshift(record);
+        this.renderReviewTable();
+        this.syncDashboardModelSelection();
+        this.renderModelMenu();
+        this.renderDashboard();
+        this.saveState('已加入迭代记录');
+        this.closeImportModal();
+      }
+
+      addManualRecord() {
+        const data = this.allFields().reduce((record, field) => {
+          record[field.key] = '';
+          return record;
+        }, {});
+        this.records.unshift({
+          id: `record_${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          sourceText: '',
+          data
+        });
+        this.renderReviewTable();
+        this.syncDashboardModelSelection();
+        this.renderModelMenu();
+        this.renderDashboard();
+        this.saveState('已新增空记录');
+      }
+
+      async importIterationWorkbook(file) {
+        try {
+          this.showTableStatus('正在导入迭代记录表...');
+          const imported = await this.iterationWorkbook.import(file);
+          this.metricFields = imported.metricFields;
+          this.records = imported.records.slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+          this.dashboardFields = this.normalizeDashboardFields({});
+          this.renderReviewTable();
+          this.renderDimensionMenu();
+          this.syncDashboardModelSelection();
+          this.renderModelMenu();
+          this.renderDashboard();
+          this.saveState(`已导入 ${this.records.length} 条迭代记录`);
+        } catch (error) {
+          this.showTableStatus(error.message || '迭代记录表导入失败', true);
+        } finally {
+          this.el.iterationImportInput.value = '';
+        }
+      }
+
+      exportIterationWorkbook() {
+        try {
+          const fileName = this.iterationWorkbook.export(this.records, this.metricFields);
+          this.showTableStatus(this.records.length ? `已导出 ${fileName}` : `暂无记录，已导出空白模板 ${fileName}`);
+        } catch (error) {
+          this.showTableStatus(error.message || '迭代记录表导出失败', true);
+        }
+      }
+
+      renderDashboard() {
+        this.syncDashboardModelSelection();
+        this.renderDashboardSummary();
+        this.renderVersionComparison();
+        const fields = this.metricFields.filter(field => this.dashboardFields[field.key]);
+        const points = this.dashboardPoints();
+        if (!fields.length || !points.length || !points.some(point => fields.some(field => point.values[field.key] !== null))) {
+          this.el.trendChart.removeAttribute('viewBox');
+          this.el.trendChart.style.minWidth = '';
+          this.el.trendChart.innerHTML = '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#9b948d" font-size="13">暂无趋势数据</text>';
+          this.el.trendLegend.innerHTML = '';
+          return;
+        }
+        this.renderTrendChart(fields, points);
+        this.renderTrendLegend(fields);
+      }
+
+      renderDashboardSummary() {
+        if (this.el.dashboardRecordTotal) this.el.dashboardRecordTotal.textContent = this.records.length;
+        const latestRecord = this.records[0];
+        const latest = latestRecord?.data || {};
+        const rows = [
+          ['最新模型', latest.model_eval_name || '-'],
+          ['日期', latest.eval_date || '-'],
+          ...this.latestMetricRows(latestRecord)
+        ];
+        if (this.el.dashboardLatestSummary) {
+          this.el.dashboardLatestSummary.innerHTML = rows.map(([label, value]) => `
+            <div class="summary-row">
+              <span>${this.escape(label)}</span>
+              <strong>${this.escape(value)}</strong>
+            </div>
+          `).join('');
+        }
+      }
+
+      renderVersionComparison() {
+        if (!this.el.versionComparison) return;
+        const fields = this.metricFields;
+        const records = this.records.slice(0, 2);
+        if (!records.length || !fields.length) {
+          this.el.versionComparison.innerHTML = '<div class="comparison-empty">暂无版本数据</div>';
+          return;
+        }
+        const chart = this.renderComparisonHistogram(records, fields, 'compact');
+        const legend = this.comparisonLegendHtml(records);
+        const hint = records.length < 2 ? '<div class="hint">等待第二条模型版本</div>' : '';
+        this.el.versionComparison.innerHTML = `
+          <div class="comparison-chart-scroll">
+            <svg class="comparison-chart" viewBox="0 0 ${chart.width} ${chart.height}" style="min-width:${chart.width}px" role="img" aria-label="版本对比双列直方图">${chart.svg}</svg>
+          </div>
+          <div class="comparison-legend">${legend}</div>
+          ${hint}
+        `;
+        this.bindComparisonTooltip(this.el.versionComparison);
+      }
+
+      comparisonLegendHtml(records) {
+        return records.map((record, index) => {
+          const data = record?.data || {};
+          const color = index === 0 ? '#3377ff' : '#f97316';
+          const name = data.model_eval_name || `模型版本 ${index + 1}`;
+          const date = data.eval_date || record.createdAt || '-';
+          return `<span class="legend-item"><span class="legend-swatch" style="background:${color}"></span>${this.escape(name)} · ${this.escape(date)}</span>`;
+        }).join('');
+      }
+
+      renderComparisonHistogram(records, fields, mode = 'compact') {
+        const expanded = mode === 'expanded';
+        const width = Math.max(expanded ? 1160 : 940, fields.length * (expanded ? 112 : 82) + 110);
+        const height = expanded ? 560 : 320;
+        const padding = { top: expanded ? 36 : 24, right: 28, bottom: expanded ? 108 : 80, left: 54 };
+        const plotWidth = width - padding.left - padding.right;
+        const plotHeight = height - padding.top - padding.bottom;
+        const groupWidth = plotWidth / fields.length;
+        const barWidth = Math.min(24, groupWidth / 4);
+        const gap = 8;
+        const colors = ['#3377ff', '#f97316'];
+        const y = value => padding.top + (1 - value / 100) * plotHeight;
+        let svg = `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
+        [0, 25, 50, 75, 100].forEach(tick => {
+          const yy = y(tick);
+          svg += `<line x1="${padding.left}" y1="${yy}" x2="${width - padding.right}" y2="${yy}" stroke="#edf1f7" />`;
+          svg += `<text x="${padding.left - 10}" y="${yy + 4}" text-anchor="end" fill="#878d99" font-size="12">${tick}%</text>`;
+        });
+        svg += `<line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}" stroke="#cfd7e6" />`;
+        svg += `<line x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}" stroke="#cfd7e6" />`;
+        fields.forEach((field, fieldIndex) => {
+          const groupCenter = padding.left + groupWidth * fieldIndex + groupWidth / 2;
+          const label = field.name.length > 7 ? `${field.name.slice(0, 7)}...` : field.name;
+          svg += `<text x="${groupCenter}" y="${height - padding.bottom + 24}" text-anchor="middle" fill="#6f7683" font-size="12">${this.escape(label)}</text>`;
+          records.forEach((record, recordIndex) => {
+            const data = record?.data || {};
+            const value = this.parsePercent(data[field.key]);
+            if (value === null) return;
+            const x = groupCenter - barWidth - gap / 2 + recordIndex * (barWidth + gap);
+            const yy = y(value);
+            const barHeight = height - padding.bottom - yy;
+            const modelName = data.model_eval_name || `模型版本 ${recordIndex + 1}`;
+            svg += `<rect x="${x}" y="${yy}" width="${barWidth}" height="${barHeight}" rx="4" fill="${colors[recordIndex]}" data-comparison-bar="true" data-field="${this.escape(field.name)}" data-model="${this.escape(modelName)}" data-value="${value.toFixed(2)}%" />`;
+          });
+        });
+        svg += `</svg>`;
+        return {
+          width,
+          height,
+          svg: svg.replace(/^<svg[^>]*>|<\/svg>$/g, '')
+        };
+      }
+
+      bindComparisonTooltip(root = this.el.versionComparison) {
+        if (!root) return;
+        root.querySelectorAll('[data-comparison-bar]').forEach(bar => {
+          bar.addEventListener('mouseenter', event => this.showComparisonTooltip(event));
+          bar.addEventListener('mousemove', event => this.moveChartTooltip(event));
+          bar.addEventListener('mouseleave', () => this.hideChartTooltip());
+        });
+      }
+
+      showComparisonTooltip(event) {
+        const bar = event.target;
+        this.el.chartTooltip.innerHTML = `
+          <strong>${this.escape(bar.dataset.field || '-')}</strong><br>
+          模型名称：${this.escape(bar.dataset.model || '-')}<br>
+          百分比分数：${this.escape(bar.dataset.value || '-')}
+        `;
+        this.el.chartTooltip.hidden = false;
+        this.moveChartTooltip(event);
+      }
+
+      dashboardPoints() {
+        return this.records
+          .filter(record => this.dashboardModels[record.id] !== false)
+          .map(record => {
+            const date = this.parseChartDate(record.data?.eval_date || record.createdAt);
+            if (!date) return null;
+            const values = this.metricFields.reduce((output, field) => {
+              output[field.key] = this.parsePercent(record.data?.[field.key]);
+              return output;
+            }, {});
+            return {
+              date,
+              dateLabel: this.formatChartDate(date),
+              modelName: record.data?.model_eval_name || '-',
+              values
+            };
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.date - b.date);
+      }
+
+      syncDashboardModelSelection() {
+        const ids = new Set(this.records.map(record => record.id));
+        Object.keys(this.dashboardModels).forEach(id => {
+          if (!ids.has(id)) delete this.dashboardModels[id];
+        });
+        this.records.forEach(record => {
+          if (!(record.id in this.dashboardModels)) this.dashboardModels[record.id] = true;
+        });
+      }
+
+      buildTrendChart(fields, points, mode = 'compact') {
+        const expanded = mode === 'expanded';
+        const width = Math.max(expanded ? 1080 : 860, points.length * (expanded ? 152 : 112) + 160);
+        const height = expanded ? 560 : 320;
+        const padding = { top: expanded ? 36 : 24, right: 36, bottom: expanded ? 72 : 54, left: 54 };
+        const plotWidth = width - padding.left - padding.right;
+        const plotHeight = height - padding.top - padding.bottom;
+        const x = index => padding.left + (points.length === 1 ? plotWidth / 2 : (index / (points.length - 1)) * plotWidth);
+        const y = value => padding.top + (1 - value / 100) * plotHeight;
+        const axisColor = '#cfd7e6';
+        const gridColor = '#edf1f7';
+        const fieldIndex = new Map(this.metricFields.map((field, index) => [field.key, index]));
+        let svg = `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
+        [0, 25, 50, 75, 100].forEach(tick => {
+          const yy = y(tick);
+          svg += `<line x1="${padding.left}" y1="${yy}" x2="${width - padding.right}" y2="${yy}" stroke="${gridColor}" />`;
+          svg += `<text x="${padding.left - 10}" y="${yy + 4}" text-anchor="end" fill="#878d99" font-size="12">${tick}%</text>`;
+        });
+        svg += `<line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}" stroke="${axisColor}" />`;
+        svg += `<line x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}" stroke="${axisColor}" />`;
+        points.forEach((point, index) => {
+          const xx = x(index);
+          svg += `<text x="${xx}" y="${height - padding.bottom + 24}" text-anchor="middle" fill="#878d99" font-size="12">${this.escape(point.dateLabel)}</text>`;
+        });
+        fields.forEach(field => {
+          const color = this.chartColors[(fieldIndex.get(field.key) || 0) % this.chartColors.length];
+          const validPoints = points
+            .map((point, index) => ({ point, index, value: point.values[field.key] }))
+            .filter(item => item.value !== null);
+          if (!validPoints.length) return;
+          const path = validPoints.map((item, pathIndex) => `${pathIndex ? 'L' : 'M'} ${x(item.index)} ${y(item.value)}`).join(' ');
+          svg += `<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />`;
+          validPoints.forEach(item => {
+            svg += `<circle cx="${x(item.index)}" cy="${y(item.value)}" r="4" fill="#fff" stroke="${color}" stroke-width="2" data-chart-point="true" data-field="${this.escape(field.name)}" data-model="${this.escape(item.point.modelName)}" data-value="${item.value.toFixed(2)}%" />`;
+          });
+        });
+        svg += `</svg>`;
+        return {
+          width,
+          height,
+          svg: svg.replace(/^<svg[^>]*>|<\/svg>$/g, '')
+        };
+      }
+
+      renderTrendChart(fields, points) {
+        const chart = this.buildTrendChart(fields, points, 'compact');
+        this.el.trendChart.setAttribute('viewBox', `0 0 ${chart.width} ${chart.height}`);
+        this.el.trendChart.style.minWidth = `${chart.width}px`;
+        this.el.trendChart.innerHTML = chart.svg;
+        this.bindChartTooltip(this.el.trendChart);
+      }
+
+      trendLegendHtml(fields) {
+        const fieldIndex = new Map(this.metricFields.map((field, index) => [field.key, index]));
+        return fields.map(field => {
+          const color = this.chartColors[(fieldIndex.get(field.key) || 0) % this.chartColors.length];
+          return `<span class="legend-item"><span class="legend-swatch" style="background:${color}"></span>${this.escape(field.name)}</span>`;
+        }).join('');
+      }
+
+      renderTrendLegend(fields) {
+        this.el.trendLegend.innerHTML = this.trendLegendHtml(fields);
+      }
+
+      bindChartTooltip(root = this.el.trendChart) {
+        root.querySelectorAll('[data-chart-point]').forEach(point => {
+          point.addEventListener('mouseenter', event => this.showChartTooltip(event));
+          point.addEventListener('mousemove', event => this.moveChartTooltip(event));
+          point.addEventListener('mouseleave', () => this.hideChartTooltip());
+        });
+      }
+
+      showChartTooltip(event) {
+        const point = event.target;
+        this.el.chartTooltip.innerHTML = `
+          <strong>${this.escape(point.dataset.field || '-')}</strong><br>
+          模型名称：${this.escape(point.dataset.model || '-')}<br>
+          百分比分数：${this.escape(point.dataset.value || '-')}
+        `;
+        this.el.chartTooltip.hidden = false;
+        this.moveChartTooltip(event);
+      }
+
+      moveChartTooltip(event) {
+        this.el.chartTooltip.style.left = `${event.clientX + 12}px`;
+        this.el.chartTooltip.style.top = `${event.clientY + 12}px`;
+      }
+
+      hideChartTooltip() {
+        this.el.chartTooltip.hidden = true;
+      }
+
+      parsePercent(value) {
+        const text = String(value ?? '').trim();
+        if (!text) return null;
+        const number = Number(text.replace('%', ''));
+        if (!Number.isFinite(number)) return null;
+        return Math.max(0, Math.min(100, number));
+      }
+
+      parseChartDate(value) {
+        const text = String(value ?? '').trim();
+        if (!text) return null;
+        const normalized = text.replace(/\//g, '-');
+        const match = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (match) {
+          const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+          return Number.isNaN(date.getTime()) ? null : date;
+        }
+        const date = new Date(normalized);
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+
+      formatChartDate(date) {
+        const pad = number => String(number).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+      }
+
+      handleRecordInput(event) {
+        const cell = event.target.closest('[data-record-id]');
+        if (!cell) return;
+        const record = this.records.find(item => item.id === cell.dataset.recordId);
+        if (!record) return;
+        const value = this.normalizeCellText(cell.textContent);
+        if (cell.dataset.meta === 'createdAt') record.createdAt = this.iterationWorkbook.parseImportedTime(value) || value;
+        if (cell.dataset.field) record.data[cell.dataset.field] = value;
+        cell.title = value || '-';
+        this.renderReviewSummary();
+        this.renderModelMenu();
+        this.renderDashboard();
+        this.saveState();
+      }
+
+      handleTablePaste(event) {
+        const cell = event.target.closest('[data-record-id]');
+        if (!cell) return;
+        const text = event.clipboardData?.getData('text/plain') || '';
+        if (!text.includes('\t') && !text.includes('\n')) return;
+        event.preventDefault();
+        const startRow = Number(cell.dataset.rowIndex);
+        const startCol = Number(cell.dataset.colIndex);
+        const rows = text.replace(/\r/g, '').split('\n').filter((row, index, list) => row || index < list.length - 1);
+        const fields = this.allFields();
+        rows.forEach((rowText, rowOffset) => {
+          const recordIndex = startRow + rowOffset;
+          while (recordIndex >= this.records.length) this.records.push(this.createEmptyRecord());
+          const values = rowText.split('\t');
+          values.forEach((value, colOffset) => {
+            const colIndex = startCol + colOffset;
+            const cleanValue = this.normalizeCellText(value);
+            if (colIndex === -1) {
+              this.records[recordIndex].createdAt = this.iterationWorkbook.parseImportedTime(cleanValue) || cleanValue || this.records[recordIndex].createdAt;
+              return;
+            }
+            const field = fields[colIndex];
+            if (field) this.records[recordIndex].data[field.key] = cleanValue;
+          });
+        });
+        this.renderReviewTable();
+        this.syncDashboardModelSelection();
+        this.renderModelMenu();
+        this.renderDashboard();
+        this.saveState(`已粘贴 ${rows.length} 行数据`);
+      }
+
+      createEmptyRecord() {
+        const data = this.allFields().reduce((record, field) => {
+          record[field.key] = '';
+          return record;
+        }, {});
+        return {
+          id: `record_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          createdAt: new Date().toISOString(),
+          sourceText: '',
+          data
+        };
+      }
+
+      renderReviewTable() {
+        const fields = this.allFields();
+        const columns = this.tableColumns();
+        const colgroup = `<colgroup>${columns.map(column => `<col data-column-key="${this.escape(column.key)}" style="width:${this.getColumnWidth(column.key)}px">`).join('')}</colgroup>`;
+        this.el.reviewTableHead.parentElement.querySelector('colgroup')?.remove();
+        this.el.reviewTableHead.insertAdjacentHTML('beforebegin', colgroup);
+        this.el.reviewTableHead.innerHTML = `<tr>${columns.map(column => `<th data-column-key="${this.escape(column.key)}" ${column.field ? `data-field="${this.escape(column.field.key)}"` : ''}>${this.escape(column.name)}<span class="resize-handle" data-column-key="${this.escape(column.key)}" title="拖拽调整列宽"></span></th>`).join('')}</tr>`;
+        this.renderReviewSummary();
+        if (!this.records.length) {
+          this.el.reviewTableBody.innerHTML = `<tr><td colspan="${fields.length + 1}"><div class="review-empty">暂无记录，可点击“新增空记录”或导入迭代记录表。</div></td></tr>`;
+          return;
+        }
+        this.el.reviewTableBody.innerHTML = this.records.map((record, rowIndex) => `
+          <tr>
+            <td contenteditable="true" spellcheck="false" data-record-id="${this.escape(record.id)}" data-row-index="${rowIndex}" data-col-index="-1" data-meta="createdAt" title="${this.escape(this.formatTime(record.createdAt))}">${this.escape(this.formatTime(record.createdAt))}</td>
+            ${fields.map((field, colIndex) => `<td contenteditable="true" spellcheck="false" data-record-id="${this.escape(record.id)}" data-row-index="${rowIndex}" data-col-index="${colIndex}" data-field="${this.escape(field.key)}" class="${field.type === 'percent' ? 'percent' : ''}" title="${this.escape(record.data[field.key] || '-')}">${this.escape(record.data[field.key] || '')}</td>`).join('')}
+          </tr>
+        `).join('');
+      }
+
+      tableColumns() {
+        return [
+          { key: 'createdAt', name: '记录时间' },
+          ...this.allFields().map(field => ({ key: field.key, name: field.name, field }))
+        ];
+      }
+
+      getColumnWidth(key) {
+        const saved = Number(this.columnWidths[key]);
+        if (Number.isFinite(saved) && saved >= 80) return saved;
+        if (['model_eval_name', 'model_eval_report', 'model_eval_link', 'training_data_link'].includes(key)) return 220;
+        if (key === 'createdAt') return 150;
+        return 130;
+      }
+
+      startColumnResize(event) {
+        const handle = event.target.closest('.resize-handle');
+        if (!handle) return;
+        event.preventDefault();
+        const key = handle.dataset.columnKey;
+        const th = handle.closest('th');
+        this.columnResize = {
+          key,
+          startX: event.clientX,
+          startWidth: th.getBoundingClientRect().width
+        };
+        handle.classList.add('active');
+        document.addEventListener('pointermove', this.boundColumnResizeMove ||= event => this.moveColumnResize(event));
+        document.addEventListener('pointerup', this.boundColumnResizeEnd ||= event => this.endColumnResize(event), { once: true });
+      }
+
+      moveColumnResize(event) {
+        if (!this.columnResize) return;
+        const width = Math.max(80, Math.round(this.columnResize.startWidth + event.clientX - this.columnResize.startX));
+        this.applyColumnWidth(this.columnResize.key, width);
+      }
+
+      endColumnResize() {
+        if (!this.columnResize) return;
+        document.removeEventListener('pointermove', this.boundColumnResizeMove);
+        this.el.reviewTableHead.querySelector('.resize-handle.active')?.classList.remove('active');
+        this.saveState();
+        this.showTableStatus('列宽已保存');
+        this.columnResize = null;
+      }
+
+      applyColumnWidth(key, width) {
+        this.columnWidths[key] = width;
+        const col = this.el.reviewTableHead.parentElement.querySelector(`col[data-column-key="${CSS.escape(key)}"]`);
+        if (col) col.style.width = `${width}px`;
+      }
+
+      renderReviewSummary() {
+        const latestRecord = this.records[0];
+        const latest = latestRecord?.data || {};
+        const summaryField = this.metricFieldByName('最终得分') || this.metricFields[0];
+        const summaryValue = summaryField ? latest[summaryField.key] || '-' : '-';
+        this.el.reviewSummary.innerHTML = `
+          <div class="review-stat"><strong>${this.records.length}</strong><span>迭代记录</span></div>
+          <div class="review-stat"><strong>${this.escape(summaryValue)}</strong><span>最新${this.escape(summaryField?.name || '得分')}</span></div>
+          <div class="review-stat"><strong>${this.escape(latest.model_eval_name || '-')}</strong><span>最新模型评估名称</span></div>
+        `;
+      }
+
+      formatTime(value) {
+        if (!value) return '-';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        const pad = number => String(number).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      }
+
+
+      resetAll() {
+        StorageService.clear();
+        this.detection = null;
+        this.workbook = null;
+        this.manualValues = {};
+        this.metricFields = [];
+        this.dashboardFields = this.normalizeDashboardFields({});
+        this.dashboardModels = {};
+        this.records = [];
+        this.renderReviewTable();
+        this.renderManualFields();
+        this.renderDimensionMenu();
+        this.renderModelMenu();
+        this.renderDashboard();
+        this.recalculate();
+        this.el.fileInput.value = '';
+        this.el.fileName.textContent = '未选择文件';
+        this.saveState();
+        this.showStatus('success', '已重置基础信息、自动识别结果和迭代记录表');
+        this.showTableStatus('已重置迭代记录表');
+      }
+
+      saveState(message = '') {
+        const state = this.currentState();
+        this.localChangeSequence += 1;
+        StorageService.save(state);
+        this.scheduleCloudSave(state);
+        if (message) this.showStatus('success', message);
+      }
+
+      currentState() {
+        return {
+          metricFields: this.metricFields,
+          manualValues: this.manualValues,
+          columnWidths: this.columnWidths,
+          dashboardFields: this.dashboardFields,
+          dashboardModels: this.dashboardModels,
+          review: {
+            records: this.records
+          }
+        };
+      }
+
+      applyState(state) {
+        const normalized = StorageService.normalize(state);
+        this.detection = null;
+        this.manualValues = normalized.manualValues || {};
+        this.columnWidths = normalized.columnWidths || {};
+        this.records = (normalized.review?.records || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        this.migrateLegacyRecords(this.records);
+        this.metricFields = this.resolveMetricFields(normalized.metricFields || [], this.records);
+        this.dashboardFields = this.normalizeDashboardFields(normalized.dashboardFields || {});
+        this.dashboardModels = normalized.dashboardModels || {};
+        this.renderManualFields();
+        this.renderReviewTable();
+        this.renderDimensionMenu();
+        this.renderModelMenu();
+        this.renderDashboard();
+      }
+
+      async loadCloudState() {
+        if (!CloudStorageService.isAvailable()) return;
+        try {
+          const snapshot = await CloudStorageService.load();
+          if (!snapshot) {
+            this.showTableStatus('云端初始化中...');
+            this.saveState();
+            return;
+          }
+          this.cloudVersion = snapshot.version;
+          const state = snapshot.state;
+          if (!state || !Object.keys(state).length) {
+            this.showTableStatus('正在将本地数据迁移到云端...');
+            this.saveState();
+            return;
+          }
+          this.applyState(state);
+          StorageService.save(state);
+          this.lastCloudSavedSequence = this.localChangeSequence;
+          this.showTableStatus('云端已同步');
+        } catch (error) {
+          this.showTableStatus('云端不可用，本地保存', true);
+        }
+      }
+
+      scheduleCloudSave(state) {
+        if (!CloudStorageService.isAvailable()) return;
+        clearTimeout(this.cloudSaveTimer);
+        if (this.cloudBlockedByConflict) {
+          this.showTableStatus('检测到协作冲突，请刷新页面后继续编辑', true);
+          return;
+        }
+        const sequence = this.localChangeSequence;
+        this.showTableStatus('正在同步云端...');
+        this.cloudSaveTimer = setTimeout(async () => {
+          if (this.cloudSaveInFlight) {
+            this.scheduleCloudSave(this.currentState());
+            return;
+          }
+          this.cloudSaveInFlight = true;
+          try {
+            const snapshot = await CloudStorageService.save(state, this.cloudVersion);
+            this.cloudVersion = snapshot.version;
+            this.lastCloudSavedSequence = Math.max(this.lastCloudSavedSequence, sequence);
+            if (sequence < this.localChangeSequence) {
+              this.scheduleCloudSave(this.currentState());
+            } else {
+              this.showTableStatus(`云端已同步 · 版本 ${this.cloudVersion}`);
+            }
+          } catch (error) {
+            if (error.isConflict) {
+              this.cloudBlockedByConflict = true;
+              this.showTableStatus('其他人已更新云端；当前修改未覆盖对方数据，请刷新后重试', true);
+            } else {
+              this.showTableStatus('云端同步失败，本地已保存', true);
+            }
+          } finally {
+            this.cloudSaveInFlight = false;
+          }
+        }, 1200);
+      }
+
+      startCloudPolling() {
+        if (!CloudStorageService.isAvailable() || this.cloudPollTimer) return;
+        this.cloudPollTimer = window.setInterval(() => this.refreshCloudState(), 10000);
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) this.refreshCloudState();
+        });
+      }
+
+      async refreshCloudState() {
+        const hasPendingChanges = this.lastCloudSavedSequence < this.localChangeSequence;
+        if (document.hidden || hasPendingChanges || this.cloudSaveInFlight || this.cloudBlockedByConflict) return;
+        try {
+          const snapshot = await CloudStorageService.load();
+          if (!snapshot || snapshot.version <= this.cloudVersion) return;
+          this.cloudVersion = snapshot.version;
+          this.applyState(snapshot.state);
+          StorageService.save(snapshot.state);
+          this.showTableStatus(`已同步其他人的更新 · 版本 ${this.cloudVersion}`);
+        } catch (error) {
+          this.showTableStatus('云端刷新失败，本地数据不受影响', true);
+        }
+      }
+
+      showStatus(type, message) {
+        this.el.status.className = `status ${type} show`;
+        this.el.status.textContent = message;
+      }
+
+      showTableStatus(message, isError = false) {
+        this.el.tableStatus.textContent = message;
+        this.el.tableStatus.style.color = isError ? '#b42318' : '';
+      }
+
+      normalizeCellText(value) {
+        return String(value ?? '').replace(/[\r\n\t]+/g, ' ').trim();
+      }
+
+      escape(value) {
+        return String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => new UIController());
+  </script>
+</body>
+</html>
