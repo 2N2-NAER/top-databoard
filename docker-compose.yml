@@ -1,0 +1,32 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 8080
+      DATABASE_URL: postgres://databoard:${POSTGRES_PASSWORD}@postgres:5432/databoard
+      JSON_LIMIT: 25mb
+    ports:
+      - "${APP_PORT:-8080}:8080"
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: databoard
+      POSTGRES_USER: databoard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U databoard -d databoard"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  postgres_data:
