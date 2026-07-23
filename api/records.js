@@ -1,14 +1,16 @@
 const { requireSession } = require('./_auth');
 
-const TABLE_NAME = 'dashboard_state_revisions';
-
 function getSupabaseConfig() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-  if (!url || !key) throw new Error('Supabase environment variables are not configured');
+  const dataSecret = process.env.DASHBOARD_DATA_SECRET;
+  if (!url || !key || !dataSecret) {
+    throw new Error('Supabase environment variables are not configured');
+  }
   return {
-    endpoint: `${url.replace(/\/$/, '')}/rest/v1/${TABLE_NAME}`,
-    key
+    endpoint: `${url.replace(/\/$/, '')}/rest/v1/rpc`,
+    key,
+    dataSecret
   };
 }
 
@@ -31,16 +33,20 @@ function isConflict(statusCode, payload) {
   return statusCode === 409 || /VERSION_CONFLICT|40001|conflict/i.test(text);
 }
 
-async function supabaseFetch(path, options = {}) {
-  const { endpoint, key } = getSupabaseConfig();
-  const response = await fetch(`${endpoint}${path}`, {
-    ...options,
+async function supabaseRpc(functionName, body = {}) {
+  const { endpoint, key, dataSecret } = getSupabaseConfig();
+  const response = await fetch(`${endpoint}/${functionName}`, {
+    method: 'POST',
     headers: {
       apikey: key,
       Authorization: `Bearer ${key}`,
       Accept: 'application/json',
-      ...(options.headers || {})
-    }
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      p_secret: dataSecret,
+      ...body
+    })
   });
   const text = await response.text();
   const payload = text ? JSON.parse(text) : null;
@@ -53,43 +59,33 @@ async function supabaseFetch(path, options = {}) {
   return payload;
 }
 
+function toClientState(row) {
+  return row ? {
+    state: row.state || null,
+    version: Number(row.version) || 0,
+    updatedAt: row.created_at || ''
+  } : null;
+}
+
 module.exports = async function handler(req, res) {
   if (!requireSession(req, res)) return;
 
   try {
     if (req.method === 'GET') {
-      const rows = await supabaseFetch('?select=version,state,created_at&order=version.desc&limit=1', {
-        cache: 'no-store'
-      });
-      const latest = rows?.[0];
-      sendJson(res, 200, latest ? {
-        state: latest.state || null,
-        version: Number(latest.version) || 0,
-        updatedAt: latest.created_at || ''
-      } : null);
+      const rows = await supabaseRpc('dashboard_read_state');
+      sendJson(res, 200, toClientState(rows?.[0]));
       return;
     }
 
     if (req.method === 'POST') {
       const payload = await readJson(req);
-      const rows = await supabaseFetch('?select=version,state,created_at', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Prefer: 'return=representation'
-        },
-        body: JSON.stringify({
-          state: payload.state || {},
-          base_version: Number(payload.baseVersion) || 0
-        })
+      const rows = await supabaseRpc('dashboard_save_state', {
+        p_state: payload.state || {},
+        p_base_version: Number(payload.baseVersion) || 0
       });
-      const saved = rows?.[0];
+      const saved = toClientState(rows?.[0]);
       if (!saved) throw new Error('Supabase did not return saved state');
-      sendJson(res, 200, {
-        state: saved.state,
-        version: Number(saved.version) || 0,
-        updatedAt: saved.created_at || ''
-      });
+      sendJson(res, 200, saved);
       return;
     }
 
