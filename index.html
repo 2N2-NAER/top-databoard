@@ -417,6 +417,16 @@
       table-layout: fixed;
     }
 
+    .review-table .review-select-col,
+    .review-table .review-select-cell {
+      width: 46px;
+      min-width: 46px;
+      max-width: 46px;
+      padding: 0;
+      text-align: center;
+      vertical-align: middle;
+    }
+
     .review-table th,
     .review-table td {
       width: 130px;
@@ -428,6 +438,11 @@
 
     .review-table th:first-child,
     .review-table td:first-child {
+      width: 46px;
+    }
+
+    .review-table th:nth-child(2),
+    .review-table td:nth-child(2) {
       width: 150px;
     }
 
@@ -481,6 +496,22 @@
     .review-table th:first-child {
       z-index: 3;
       background: #f8f5f0;
+    }
+
+    .review-table tr.is-selected td {
+      background: rgba(242,90,29,.06);
+    }
+
+    .review-table tr.is-selected td:first-child {
+      background: #fff5ef;
+    }
+
+    .review-row-checkbox {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      accent-color: var(--primary);
+      cursor: pointer;
     }
 
     .review-table td[contenteditable="true"] {
@@ -1055,6 +1086,7 @@
               <input id="iterationImportInput" class="file-input" type="file" accept=".xlsx" />
               <button class="btn btn-primary" id="openImportBtn">自动处理评估数据</button>
               <button class="btn btn-soft" id="addManualRecordBtn">新增空记录</button>
+              <button class="btn btn-danger" id="deleteSelectedRowsBtn" disabled>删除选中行</button>
               <button class="btn btn-soft" id="importIterationBtn">导入迭代记录表</button>
               <button class="btn btn-soft" id="exportIterationBtn">导出迭代记录表</button>
               <button class="btn btn-ghost" id="resetAllBtn">重置全部</button>
@@ -1913,6 +1945,7 @@
         this.cloudVersion = 0;
         this.localChangeSequence = 0;
         this.lastCloudSavedSequence = 0;
+        this.selectedRecordIds = new Set();
         this.records = (saved.review?.records || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         this.migrateLegacyRecords(this.records);
         this.metricFields = this.resolveMetricFields(saved.metricFields || [], this.records);
@@ -1950,6 +1983,7 @@
           resetAllBtn: document.getElementById('resetAllBtn'),
           reviewSummary: document.getElementById('reviewSummary'),
           addManualRecordBtn: document.getElementById('addManualRecordBtn'),
+          deleteSelectedRowsBtn: document.getElementById('deleteSelectedRowsBtn'),
           importIterationBtn: document.getElementById('importIterationBtn'),
           exportIterationBtn: document.getElementById('exportIterationBtn'),
           iterationImportInput: document.getElementById('iterationImportInput'),
@@ -1992,10 +2026,13 @@
           window.location.reload();
         });
         this.el.addManualRecordBtn.addEventListener('click', () => this.addManualRecord());
+        this.el.deleteSelectedRowsBtn.addEventListener('click', () => this.deleteSelectedRecords());
         this.el.importIterationBtn.addEventListener('click', () => this.el.iterationImportInput.click());
         this.el.iterationImportInput.addEventListener('change', event => this.importIterationWorkbook(event.target.files[0]));
         this.el.exportIterationBtn.addEventListener('click', () => this.exportIterationWorkbook());
         this.el.reviewTableBody.addEventListener('input', event => this.handleRecordInput(event));
+        this.el.reviewTableBody.addEventListener('change', event => this.handleRowSelection(event));
+        this.el.reviewTableHead.addEventListener('change', event => this.handleSelectAllRows(event));
         this.el.reviewTableBody.addEventListener('paste', event => this.handleTablePaste(event));
         this.el.reviewTableHead.addEventListener('pointerdown', event => this.startColumnResize(event));
         this.el.pageTabs.forEach(tab => tab.addEventListener('click', () => this.switchPage(tab.dataset.pageTarget)));
@@ -2445,6 +2482,7 @@
           const imported = await this.iterationWorkbook.import(file);
           this.metricFields = imported.metricFields;
           this.records = imported.records.slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+          this.selectedRecordIds.clear();
           this.dashboardFields = this.normalizeDashboardFields({});
           this.renderReviewTable();
           this.renderDimensionMenu();
@@ -2794,6 +2832,71 @@
         this.saveState(`已粘贴 ${rows.length} 行数据`);
       }
 
+      handleRowSelection(event) {
+        const checkbox = event.target.closest('[data-select-record-id]');
+        if (!checkbox) return;
+        const recordId = checkbox.dataset.selectRecordId;
+        if (!recordId) return;
+        if (checkbox.checked) this.selectedRecordIds.add(recordId);
+        else this.selectedRecordIds.delete(recordId);
+        checkbox.closest('tr')?.classList.toggle('is-selected', checkbox.checked);
+        this.updateSelectAllRowsState();
+        this.updateDeleteSelectedRowsButton();
+      }
+
+      handleSelectAllRows(event) {
+        const checkbox = event.target.closest('[data-select-all-records]');
+        if (!checkbox) return;
+        if (checkbox.checked) {
+          this.records.forEach(record => this.selectedRecordIds.add(record.id));
+        } else {
+          this.selectedRecordIds.clear();
+        }
+        this.renderReviewTable();
+      }
+
+      deleteSelectedRecords() {
+        this.syncSelectedRecordSelection();
+        const count = this.selectedRecordIds.size;
+        if (!count) {
+          this.showTableStatus('请先勾选要删除的行', true);
+          return;
+        }
+        const confirmed = window.confirm(`确定删除选中的 ${count} 行记录吗？`);
+        if (!confirmed) return;
+        this.records = this.records.filter(record => !this.selectedRecordIds.has(record.id));
+        this.selectedRecordIds.clear();
+        this.renderReviewTable();
+        this.syncDashboardModelSelection();
+        this.renderModelMenu();
+        this.renderDashboard();
+        this.saveState(`已删除 ${count} 行记录`);
+        this.showTableStatus(`已删除 ${count} 行记录`);
+      }
+
+      syncSelectedRecordSelection() {
+        const ids = new Set(this.records.map(record => record.id));
+        Array.from(this.selectedRecordIds).forEach(id => {
+          if (!ids.has(id)) this.selectedRecordIds.delete(id);
+        });
+        this.updateDeleteSelectedRowsButton();
+      }
+
+      updateDeleteSelectedRowsButton() {
+        if (!this.el.deleteSelectedRowsBtn) return;
+        const count = this.selectedRecordIds.size;
+        this.el.deleteSelectedRowsBtn.disabled = count === 0;
+        this.el.deleteSelectedRowsBtn.textContent = count ? `删除选中行（${count}）` : '删除选中行';
+      }
+
+      updateSelectAllRowsState() {
+        const checkbox = this.el.reviewTableHead.querySelector('[data-select-all-records]');
+        if (!checkbox) return;
+        const count = this.selectedRecordIds.size;
+        checkbox.checked = this.records.length > 0 && count === this.records.length;
+        checkbox.indeterminate = count > 0 && count < this.records.length;
+      }
+
       createEmptyRecord() {
         const data = this.allFields().reduce((record, field) => {
           record[field.key] = '';
@@ -2808,23 +2911,27 @@
       }
 
       renderReviewTable() {
+        this.syncSelectedRecordSelection();
         const fields = this.allFields();
         const columns = this.tableColumns();
-        const colgroup = `<colgroup>${columns.map(column => `<col data-column-key="${this.escape(column.key)}" style="width:${this.getColumnWidth(column.key)}px">`).join('')}</colgroup>`;
+        const colgroup = `<colgroup><col class="review-select-col">${columns.map(column => `<col data-column-key="${this.escape(column.key)}" style="width:${this.getColumnWidth(column.key)}px">`).join('')}</colgroup>`;
         this.el.reviewTableHead.parentElement.querySelector('colgroup')?.remove();
         this.el.reviewTableHead.insertAdjacentHTML('beforebegin', colgroup);
-        this.el.reviewTableHead.innerHTML = `<tr>${columns.map(column => `<th data-column-key="${this.escape(column.key)}" ${column.field ? `data-field="${this.escape(column.field.key)}"` : ''}>${this.escape(column.name)}<span class="resize-handle" data-column-key="${this.escape(column.key)}" title="拖拽调整列宽"></span></th>`).join('')}</tr>`;
+        this.el.reviewTableHead.innerHTML = `<tr><th class="review-select-cell" title="全选当前记录"><input class="review-row-checkbox" type="checkbox" data-select-all-records aria-label="全选当前记录" /></th>${columns.map(column => `<th data-column-key="${this.escape(column.key)}" ${column.field ? `data-field="${this.escape(column.field.key)}"` : ''}>${this.escape(column.name)}<span class="resize-handle" data-column-key="${this.escape(column.key)}" title="拖拽调整列宽"></span></th>`).join('')}</tr>`;
         this.renderReviewSummary();
         if (!this.records.length) {
-          this.el.reviewTableBody.innerHTML = `<tr><td colspan="${fields.length + 1}"><div class="review-empty">暂无记录，可点击“新增空记录”或导入迭代记录表。</div></td></tr>`;
+          this.el.reviewTableBody.innerHTML = `<tr><td colspan="${fields.length + 2}"><div class="review-empty">暂无记录，可点击“新增空记录”或导入迭代记录表。</div></td></tr>`;
+          this.updateSelectAllRowsState();
           return;
         }
         this.el.reviewTableBody.innerHTML = this.records.map((record, rowIndex) => `
-          <tr>
+          <tr class="${this.selectedRecordIds.has(record.id) ? 'is-selected' : ''}">
+            <td class="review-select-cell"><input class="review-row-checkbox" type="checkbox" data-select-record-id="${this.escape(record.id)}" ${this.selectedRecordIds.has(record.id) ? 'checked' : ''} aria-label="选中第 ${rowIndex + 1} 行" /></td>
             <td contenteditable="true" spellcheck="false" data-record-id="${this.escape(record.id)}" data-row-index="${rowIndex}" data-col-index="-1" data-meta="createdAt" title="${this.escape(this.formatTime(record.createdAt))}">${this.escape(this.formatTime(record.createdAt))}</td>
             ${fields.map((field, colIndex) => `<td contenteditable="true" spellcheck="false" data-record-id="${this.escape(record.id)}" data-row-index="${rowIndex}" data-col-index="${colIndex}" data-field="${this.escape(field.key)}" class="${field.type === 'percent' ? 'percent' : ''}" title="${this.escape(record.data[field.key] || '-')}">${this.escape(record.data[field.key] || '')}</td>`).join('')}
           </tr>
         `).join('');
+        this.updateSelectAllRowsState();
       }
 
       tableColumns() {
@@ -2909,6 +3016,7 @@
         this.dashboardFields = this.normalizeDashboardFields({});
         this.dashboardModels = {};
         this.records = [];
+        this.selectedRecordIds.clear();
         this.renderReviewTable();
         this.renderManualFields();
         this.renderDimensionMenu();
@@ -2949,6 +3057,7 @@
         this.manualValues = normalized.manualValues || {};
         this.columnWidths = normalized.columnWidths || {};
         this.records = (normalized.review?.records || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        this.selectedRecordIds.clear();
         this.migrateLegacyRecords(this.records);
         this.metricFields = this.resolveMetricFields(normalized.metricFields || [], this.records);
         this.dashboardFields = this.normalizeDashboardFields(normalized.dashboardFields || {});
